@@ -4,57 +4,59 @@ use itertools::Itertools;
 
 fn main() -> anyhow::Result<()> {
     let input = std::fs::read_to_string("input/day01.txt")?;
-    println!("hello world!");
 
-    let res = input
+    let top_three = input
         .lines()
         .map(|line| line.parse::<usize>().ok())
         .batching(|it| it.map_while(|num| num).sum1::<usize>())
         .collect_largest::<3>();
 
-    let part1 = res[0];
-    let part2 = res.iter().sum::<usize>();
+    let part1 = top_three[0];
+    let part2 = top_three.iter().sum::<usize>();
 
     println!("part1 = {part1} part2 = {part2}");
 
     Ok(())
 }
 
-trait CollectN<T> {
-    fn collect_largest<const N: usize>(&mut self) -> arrayvec::ArrayVec<T, N>
+trait CollectN<T>
+where
+    Self: Sized,
+{
+    fn collect_largest<const N: usize>(self) -> arrayvec::ArrayVec<T, N>
     where
         T: Ord,
     {
         self.collect_by_fn(reverse_identity)
     }
 
-    fn collect_by_fn<'b, const N: usize, F, U>(&mut self, f: F) -> arrayvec::ArrayVec<T, N>
+    fn collect_by_fn<const N: usize, F>(self, f: F) -> arrayvec::ArrayVec<T, N>
     where
-        T: 'b,
-        U: Ord,
-        F: for<'a> Callable<'a, 'b, T, U>;
+        F: for<'a> Callable<&'a T>;
 }
 
-impl<I> CollectN<I::Item> for I
+impl<I, T> CollectN<T> for I
 where
-    I: std::iter::Iterator,
+    I: std::iter::Iterator<Item = T>,
 {
-    fn collect_by_fn<'b, const N: usize, F, U>(&mut self, f: F) -> arrayvec::ArrayVec<I::Item, N>
+    fn collect_by_fn<const N: usize, F>(self, f: F) -> arrayvec::ArrayVec<T, N>
     where
-        I::Item: 'b,
-        U: Ord,
-        F: for<'a> Callable<'a, 'b, I::Item, U>,
+        F: for<'a> Callable<&'a T>,
     {
         let mut res = arrayvec::ArrayVec::new();
+
+        if N == 0 {
+            return res;
+        }
 
         for item in self {
             if let Err(err) = res.try_push(item) {
                 let item = err.element();
                 let last = res.pop().expect("should always have a value");
-                let largest = std::cmp::min_by(item, last, |a, b| Ord::cmp(&f(a), &f(b)));
+                let largest = std::cmp::min_by(item, last, |a, b| Ord::cmp(&f.call(a), &f.call(b)));
 
                 res.push(largest);
-                res.sort_unstable_by(|a, b| Ord::cmp(&f(a), &f(b)));
+                res.sort_unstable_by(|a, b| Ord::cmp(&f.call(a), &f.call(b)));
             }
         }
 
@@ -62,25 +64,22 @@ where
     }
 }
 
-trait Callable<'a, 'b, T, U>: Fn(&'a T) -> U
-where
-    T: 'b,
-    U: 'a,
-    'b: 'a,
-{
+trait Callable<T> {
+    type Output: Ord;
+
+    fn call(&self, arg: T) -> Self::Output;
 }
 
-impl<'a, 'b, F, T, U> Callable<'a, 'b, T, U> for F
+impl<F, T, U> Callable<T> for F
 where
-    T: 'b,
-    U: 'a,
-    'b: 'a,
-    F: Fn(&'a T) -> U,
+    U: Ord,
+    F: Fn(T) -> U,
 {
-}
+    type Output = U;
 
-fn identity<T>(t: &T) -> &T {
-    t
+    fn call(&self, arg: T) -> Self::Output {
+        (*self)(arg)
+    }
 }
 
 fn reverse_identity<T>(t: &T) -> Reverse<&T> {
