@@ -1,5 +1,9 @@
-use std::cmp::{Ord, Reverse};
+use std::{
+    cmp::{Ord, Reverse},
+    iter::Iterator,
+};
 
+use arrayvec::ArrayVec;
 use itertools::Itertools;
 
 fn main() -> anyhow::Result<()> {
@@ -23,27 +27,27 @@ trait CollectN<T>
 where
     Self: Sized,
 {
-    fn collect_largest<const N: usize>(self) -> arrayvec::ArrayVec<T, N>
+    fn collect_largest<const N: usize>(self) -> ArrayVec<T, N>
     where
         T: Ord,
     {
         self.collect_by_fn(reverse_identity)
     }
 
-    fn collect_by_fn<const N: usize, F>(self, f: F) -> arrayvec::ArrayVec<T, N>
+    fn collect_by_fn<const N: usize, F>(self, f: F) -> ArrayVec<T, N>
     where
         F: for<'a> Callable<&'a T>;
 }
 
 impl<I, T> CollectN<T> for I
 where
-    I: std::iter::Iterator<Item = T>,
+    I: Iterator<Item = T>,
 {
-    fn collect_by_fn<const N: usize, F>(self, f: F) -> arrayvec::ArrayVec<T, N>
+    fn collect_by_fn<const N: usize, F>(self, f: F) -> ArrayVec<T, N>
     where
         F: for<'a> Callable<&'a T>,
     {
-        let mut res = arrayvec::ArrayVec::new();
+        let mut res = ArrayVec::new();
 
         if N == 0 {
             return res;
@@ -52,7 +56,9 @@ where
         for item in self {
             if let Err(err) = res.try_push(item) {
                 let item = err.element();
-                let last = res.pop().expect("should always have a value");
+                let last = res
+                    .pop()
+                    .expect("there should always be a value as res cap is > 0");
                 let largest = std::cmp::min_by(item, last, |a, b| Ord::cmp(&f.call(a), &f.call(b)));
 
                 res.push(largest);
