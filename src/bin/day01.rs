@@ -1,3 +1,5 @@
+use std::cmp::{Ord, Reverse};
+
 use itertools::Itertools;
 
 fn main() -> anyhow::Result<()> {
@@ -21,16 +23,27 @@ fn main() -> anyhow::Result<()> {
 trait CollectN<T> {
     fn collect_largest<const N: usize>(&mut self) -> arrayvec::ArrayVec<T, N>
     where
-        T: Ord;
+        T: Ord,
+    {
+        self.collect_by_fn(reverse_identity)
+    }
+
+    fn collect_by_fn<'b, const N: usize, F, U>(&mut self, f: F) -> arrayvec::ArrayVec<T, N>
+    where
+        T: 'b,
+        U: Ord,
+        F: for<'a> Callable<'a, 'b, T, U>;
 }
 
 impl<I> CollectN<I::Item> for I
 where
     I: std::iter::Iterator,
 {
-    fn collect_largest<const N: usize>(&mut self) -> arrayvec::ArrayVec<I::Item, N>
+    fn collect_by_fn<'b, const N: usize, F, U>(&mut self, f: F) -> arrayvec::ArrayVec<I::Item, N>
     where
-        I::Item: Ord,
+        I::Item: 'b,
+        U: Ord,
+        F: for<'a> Callable<'a, 'b, I::Item, U>,
     {
         let mut res = arrayvec::ArrayVec::new();
 
@@ -38,12 +51,38 @@ where
             if let Err(err) = res.try_push(item) {
                 let item = err.element();
                 let last = res.pop().expect("should always have a value");
-                let largest = std::cmp::max(item, last);
+                let largest = std::cmp::min_by(item, last, |a, b| Ord::cmp(&f(a), &f(b)));
+
                 res.push(largest);
-                res.sort_unstable_by(|a, b| b.cmp(a));
+                res.sort_unstable_by(|a, b| Ord::cmp(&f(a), &f(b)));
             }
         }
 
         res
     }
+}
+
+trait Callable<'a, 'b, T, U>: Fn(&'a T) -> U
+where
+    T: 'b,
+    U: 'a,
+    'b: 'a,
+{
+}
+
+impl<'a, 'b, F, T, U> Callable<'a, 'b, T, U> for F
+where
+    T: 'b,
+    U: 'a,
+    'b: 'a,
+    F: Fn(&'a T) -> U,
+{
+}
+
+fn identity<T>(t: &T) -> &T {
+    t
+}
+
+fn reverse_identity<T>(t: &T) -> Reverse<&T> {
+    Reverse(t)
 }
