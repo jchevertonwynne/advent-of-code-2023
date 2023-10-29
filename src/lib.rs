@@ -1,6 +1,7 @@
 use std::{
     cmp::Reverse,
     fmt::{Display, Formatter},
+    path::PathBuf,
 };
 
 use arrayvec::ArrayVec;
@@ -200,4 +201,37 @@ where
     fn call(&self, arg: T) -> Self::Output {
         (*self)(arg)
     }
+}
+
+#[macro_export]
+macro_rules! get_input_file {
+    () => {{
+        let filename = file!();
+        let is_test = std::env::var_os("TEST").is_some();
+        let filepath = input_file_path(filename, is_test);
+        std::fs::read_to_string(&filepath)?
+    }};
+}
+
+#[macro_export]
+macro_rules! get_input_file_and_test {
+    () => {{
+        let filename = file!();
+        let is_test = std::env::var_os("TEST").is_some();
+        let filepath = input_file_path(filename, is_test);
+        (std::fs::read_to_string(&filepath)?, is_test)
+    }};
+}
+
+pub fn input_file_path(file_path: &str, is_test: bool) -> PathBuf {
+    let pb = PathBuf::from(file_path);
+    let day = &pb.file_name().expect("this is a file").to_string_lossy()[..5];
+    let mut path: PathBuf = "input".into();
+    if is_test {
+        path.push(format!("{day}_test.txt"));
+    } else {
+        path.push(format!("{day}.txt"));
+    }
+
+    path
 }

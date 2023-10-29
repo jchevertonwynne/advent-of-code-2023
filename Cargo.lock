@@ -6,10 +6,21 @@ version = 3
 name = "advent-of-code-2023"
 version = "0.1.0"
 dependencies = [
+ "advent-of-code-2023-macro",
  "anyhow",
  "arrayvec",
  "criterion",
  "itertools 0.11.0",
+]
+
+[[package]]
+name = "advent-of-code-2023-macro"
+version = "0.1.0"
+source = "git+https://github.com/jchevertonwynne/advent-of-code-2023-macro?branch=main#9c993a25ed93a1c7bb35622666cb1e8bb8e24c03"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

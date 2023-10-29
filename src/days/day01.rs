@@ -21,7 +21,7 @@ mod tests {
 
     #[test]
     fn works_for_example() {
-        const INPUT: &str = include_str!("../../input/day01test.txt");
+        const INPUT: &str = include_str!("../../input/day01_test.txt");
         let solution = solve(INPUT).unwrap();
         assert_eq!(
             DayResult {
