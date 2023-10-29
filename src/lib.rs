@@ -236,3 +236,13 @@ pub fn input_file_path(file_path: &str, is_test: bool) -> PathBuf {
 
     path
 }
+
+#[macro_export]
+macro_rules! aoc {
+    ($day:expr) => {
+        use advent_of_code_2023_macro::aoc;
+
+        #[aoc(day01)]
+        fn main() {}
+    };
+}
