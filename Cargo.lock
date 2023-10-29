@@ -16,7 +16,7 @@ dependencies = [
 [[package]]
 name = "advent-of-code-2023-macro"
 version = "0.1.0"
-source = "git+https://github.com/jchevertonwynne/advent-of-code-2023-macro?branch=main#9c993a25ed93a1c7bb35622666cb1e8bb8e24c03"
+source = "git+https://github.com/jchevertonwynne/advent-of-code-2023-macro?branch=main#00e472129b333f3c6d48c0aa24005ced68fa9644"
 dependencies = [
  "proc-macro2",
  "quote",
