@@ -25,8 +25,8 @@ mod tests {
         let solution = solve(INPUT).unwrap();
         assert_eq!(
             DayResult {
-                part1: Some(Answers::Usize(24000)),
-                part2: Some(Answers::Usize(45000))
+                part1: Some(Answers::Usize(24_000)),
+                part2: Some(Answers::Usize(45_000))
             },
             solution
         );
@@ -37,8 +37,8 @@ mod tests {
         let solution = solve(INPUT).unwrap();
         assert_eq!(
             DayResult {
-                part1: Some(Answers::Usize(69836)),
-                part2: Some(Answers::Usize(207968))
+                part1: Some(Answers::Usize(69_836)),
+                part2: Some(Answers::Usize(207_968))
             },
             solution
         );

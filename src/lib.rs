@@ -134,6 +134,7 @@ impl Display for DayResult {
         Ok(())
     }
 }
+
 trait CollectN<T>
 where
     Self: Sized,
