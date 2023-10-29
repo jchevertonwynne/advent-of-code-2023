@@ -5,8 +5,10 @@ use crate::{CollectN, DayResult, IntoDayResult};
 pub fn solve(input: &str) -> anyhow::Result<DayResult> {
     let top_three = input
         .lines()
-        .map(|line| line.parse::<usize>().ok())
-        .batching(|it| it.map_while(|num| num).sum1::<usize>())
+        .batching(|it| {
+            it.map_while(|num| num.parse::<usize>().ok())
+                .sum1::<usize>()
+        })
         .collect_largest::<3>();
 
     let part1 = top_three[0];
