@@ -124,12 +124,8 @@ pub struct DayResult {
 impl Display for DayResult {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "DayResult {{")?;
-        if let Some(p1) = &self.part1 {
-            writeln!(f, "\tpart 1: {p1}")?;
-        }
-        if let Some(p2) = &self.part2 {
-            writeln!(f, "\tpart 2: {p2}")?;
-        }
+        writeln!(f, "\tpart 1: {p1:?}", p1 = self.part1)?;
+        writeln!(f, "\tpart 2: {p2:?}", p2 = self.part2)?;
         writeln!(f, "}}")?;
         Ok(())
     }
@@ -206,20 +202,18 @@ where
 
 #[macro_export]
 macro_rules! get_input_file {
-    () => {{
-        let filename = file!();
+    ($day:expr) => {{
         let is_test = std::env::var_os("TEST").is_some();
-        let filepath = input_file_path(filename, is_test);
+        let filepath = input_file_path(&$day, is_test);
         std::fs::read_to_string(&filepath)?
     }};
 }
 
 #[macro_export]
 macro_rules! get_input_file_and_test {
-    () => {{
-        let filename = file!();
+    ($day:expr) => {{
         let is_test = std::env::var_os("TEST").is_some();
-        let filepath = input_file_path(filename, is_test);
+        let filepath = input_file_path(&$day, is_test);
         (std::fs::read_to_string(&filepath)?, is_test)
     }};
 }
@@ -242,7 +236,17 @@ macro_rules! aoc {
     ($day:expr) => {
         use advent_of_code_2023_macro::aoc;
 
-        #[aoc(day01)]
+        #[aoc($day)]
+        fn main() {}
+    };
+}
+
+#[macro_export]
+macro_rules! aoc_test {
+    ($day:expr) => {
+        use advent_of_code_2023_macro::aoc_test;
+
+        #[aoc_test($day)]
         fn main() {}
     };
 }

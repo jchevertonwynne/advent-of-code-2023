@@ -27,7 +27,7 @@ fn main() -> anyhow::Result<()> {
         .write(true)
         .open(format!("src/bin/{pkg_name}.rs"))
         .context("runner file already exists")?
-        .write_all("advent_of_code_2023::aoc!(day01);".as_bytes())?;
+        .write_all(format!("advent_of_code_2023::aoc!({pkg_name});").as_bytes())?;
 
     let days = std::fs::read_to_string("src/days/mod.rs")?;
 
@@ -38,7 +38,7 @@ fn main() -> anyhow::Result<()> {
                 .map(|(_, day)| day)
                 .map_err(|err| anyhow::anyhow!("failed to parse module line: {err}"))
         })
-        .chain(Some(Ok(pkg_name.clone())).into_iter())
+        .chain(std::iter::once(Ok(pkg_name.clone())))
         .collect::<Result<HashSet<_>, _>>()?;
 
     let mut output = String::new();
@@ -58,7 +58,7 @@ pub fn solve(_input: &str) -> anyhow::Result<DayResult> {{
 
 #[cfg(test)]
 mod tests {{
-    use crate::{{days::{pkg_name}::solve, Answers, DayResult}};
+    use crate::{{days::{pkg_name}::solve, DayResult}};
 
     #[test]
     fn works_for_example() {{
@@ -72,6 +72,7 @@ mod tests {{
             solution
         );
     }}
+
     #[test]
     fn works_for_input() {{
         const INPUT: &str = include_str!("../../input/{pkg_name}.txt");
@@ -96,10 +97,9 @@ mod tests {{
 }
 
 fn parse_pkg_name(input: &str) -> IResult<&str, String> {
-    all_consuming(map(
-        preceded(tag("day"), nom::character::complete::u32),
-        |num| format!("day{num:0>2}"),
-    ))(input)
+    all_consuming(map(nom::character::complete::u32, |num| {
+        format!("day{num:0>2}")
+    }))(input)
 }
 
 fn parse_mod_line(input: &str) -> IResult<&str, String> {
