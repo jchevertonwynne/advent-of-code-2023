@@ -33,6 +33,7 @@ mod tests {
             solution
         );
     }
+
     #[test]
     fn works_for_input() {
         const INPUT: &str = include_str!("../../input/day01.txt");

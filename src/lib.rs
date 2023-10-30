@@ -124,8 +124,24 @@ pub struct DayResult {
 impl Display for DayResult {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "DayResult {{")?;
-        writeln!(f, "\tpart 1: {p1:?}", p1 = self.part1)?;
-        writeln!(f, "\tpart 2: {p2:?}", p2 = self.part2)?;
+        writeln!(
+            f,
+            "\tpart 1: {p1}",
+            p1 = self
+                .part1
+                .as_ref()
+                .map(|v| v.to_string())
+                .unwrap_or("TBC".to_string())
+        )?;
+        writeln!(
+            f,
+            "\tpart 2: {p2}",
+            p2 = self
+                .part2
+                .as_ref()
+                .map(|v| v.to_string())
+                .unwrap_or("TBC".to_string())
+        )?;
         writeln!(f, "}}")?;
         Ok(())
     }
@@ -218,9 +234,7 @@ macro_rules! get_input_file_and_test {
     }};
 }
 
-pub fn input_file_path(file_path: &str, is_test: bool) -> PathBuf {
-    let pb = PathBuf::from(file_path);
-    let day = &pb.file_name().expect("this is a file").to_string_lossy()[..5];
+pub fn input_file_path(day: &str, is_test: bool) -> PathBuf {
     let mut path: PathBuf = "input".into();
     if is_test {
         path.push(format!("{day}_test.txt"));
@@ -239,11 +253,7 @@ macro_rules! aoc {
         #[aoc($day)]
         fn main() {}
     };
-}
-
-#[macro_export]
-macro_rules! aoc_test {
-    ($day:expr) => {
+    ($day:expr, is_test) => {
         use advent_of_code_2023_macro::aoc_test;
 
         #[aoc_test($day)]
