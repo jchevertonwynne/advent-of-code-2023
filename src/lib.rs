@@ -219,6 +219,7 @@ where
 #[macro_export]
 macro_rules! get_input_file {
     ($day:expr) => {{
+        use advent_of_code_2023::input_file_path;
         let is_test = std::env::var_os("TEST").is_some();
         let filepath = input_file_path(&$day, is_test);
         std::fs::read_to_string(&filepath)?
@@ -228,6 +229,7 @@ macro_rules! get_input_file {
 #[macro_export]
 macro_rules! get_input_file_and_test {
     ($day:expr) => {{
+        use advent_of_code_2023::input_file_path;
         let is_test = std::env::var_os("TEST").is_some();
         let filepath = input_file_path(&$day, is_test);
         (std::fs::read_to_string(&filepath)?, is_test)
@@ -247,16 +249,38 @@ pub fn input_file_path(day: &str, is_test: bool) -> PathBuf {
 
 #[macro_export]
 macro_rules! aoc {
-    ($day:expr) => {
-        use advent_of_code_2023_macro::aoc;
-
-        #[aoc($day)]
-        fn main() {}
+    ($day:tt) => {
+        advent_of_code_2023::aoc!($day, $day);
     };
-    ($day:expr, is_test) => {
-        use advent_of_code_2023_macro::aoc_test;
+    ($day:expr, $daymod:ident) => {
+        use advent_of_code_2023::days::$daymod;
+        use advent_of_code_2023::get_input_file;
 
-        #[aoc_test($day)]
-        fn main() {}
+        fn main() -> anyhow::Result<()> {
+            let day = stringify!($day);
+            let input = get_input_file!(day);
+            let solution = $daymod::solve(&input)?;
+
+            println!("{day}: {solution}");
+
+            Ok(())
+        }
+    };
+    ($day:tt, is_test) => {
+        advent_of_code_2023::aoc!($day, $day, is_test);
+    };
+    ($day:expr, $daymod:ident, is_test) => {
+        use advent_of_code_2023::days::$daymod;
+        use advent_of_code_2023::get_input_file_and_test;
+
+        fn main() -> anyhow::Result<()> {
+            let day = stringify!($day);
+            let (input, is_test) = get_input_file_and_test!(day);
+            let solution = $daymod::solve(&input, is_test)?;
+
+            println!("{day}: {solution}");
+
+            Ok(())
+        }
     };
 }
