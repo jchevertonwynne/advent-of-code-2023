@@ -76,16 +76,19 @@ impl From<&'_ str> for Answers {
     }
 }
 
-pub trait IntoDayResult {
-    fn into_result(self) -> anyhow::Result<DayResult>;
+pub trait IntoDayResult: Sized {
+    fn into_result(self) -> anyhow::Result<DayResult> {
+        Ok(self.into_day_result())
+    }
+    fn into_day_result(self) -> DayResult;
 }
 
 impl IntoDayResult for () {
-    fn into_result(self) -> anyhow::Result<DayResult> {
-        Ok(DayResult {
+    fn into_day_result(self) -> DayResult {
+        DayResult {
             part1: None,
             part2: None,
-        })
+        }
     }
 }
 
@@ -93,11 +96,11 @@ impl<A> IntoDayResult for A
 where
     A: Into<Answers>,
 {
-    fn into_result(self) -> anyhow::Result<DayResult> {
-        Ok(DayResult {
+    fn into_day_result(self) -> DayResult {
+        DayResult {
             part1: Some(self.into()),
             part2: None,
-        })
+        }
     }
 }
 
@@ -106,12 +109,12 @@ where
     A: Into<Answers>,
     B: Into<Answers>,
 {
-    fn into_result(self) -> anyhow::Result<DayResult> {
+    fn into_day_result(self) -> DayResult {
         let (a, b) = self;
-        Ok(DayResult {
+        DayResult {
             part1: Some(a.into()),
             part2: Some(b.into()),
-        })
+        }
     }
 }
 
