@@ -7,15 +7,20 @@ use nom::{
     IResult,
 };
 
-use std::{collections::HashSet, fmt::Write as _, fs::File, io::Write as _};
+use std::{
+    collections::HashSet,
+    fmt::{Display, Write as _},
+    fs::File,
+    io::Write as _,
+};
 
 fn main() -> anyhow::Result<()> {
     ensure_in_aoc_repository()?;
     let pkg_name = get_pkg_name()?;
-    write_runner_file(&pkg_name)?;
-    update_mod_file(&pkg_name)?;
-    write_solver_file(&pkg_name)?;
-    write_test_files(&pkg_name)?;
+    write_runner_file(pkg_name)?;
+    update_mod_file(pkg_name)?;
+    write_solver_file(pkg_name)?;
+    write_test_files(pkg_name)?;
     Ok(())
 }
 
@@ -28,7 +33,16 @@ fn ensure_in_aoc_repository() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn get_pkg_name() -> Result<String, anyhow::Error> {
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+struct PackageName(u8);
+
+impl Display for PackageName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "day{:0>2}", self.0)
+    }
+}
+
+fn get_pkg_name() -> Result<PackageName, anyhow::Error> {
     let pkg_name = std::env::args()
         .nth(1)
         .context("expected a second argument")?;
@@ -39,23 +53,22 @@ fn get_pkg_name() -> Result<String, anyhow::Error> {
     Ok(pkg_name)
 }
 
-fn parse_pkg_name(input: &str) -> IResult<&str, String> {
-    all_consuming(map(nom::character::complete::u32, |num| {
-        format!("day{num:0>2}")
-    }))(input)
+fn parse_pkg_name(input: &str) -> IResult<&str, PackageName> {
+    all_consuming(map(nom::character::complete::u8, PackageName))(input)
 }
 
-fn parse_mod_line(input: &str) -> IResult<&str, String> {
+fn parse_mod_line(input: &str) -> IResult<&str, PackageName> {
     all_consuming(delimited(
         tag("pub mod "),
-        map(preceded(tag("day"), nom::character::complete::u32), |num| {
-            format!("day{num:0>2}")
-        }),
+        map(
+            preceded(tag("day"), nom::character::complete::u8),
+            PackageName,
+        ),
         tag(";"),
     ))(input)
 }
 
-fn write_runner_file(pkg_name: &str) -> Result<(), anyhow::Error> {
+fn write_runner_file(pkg_name: PackageName) -> Result<(), anyhow::Error> {
     File::options()
         .create_new(true)
         .write(true)
@@ -66,7 +79,7 @@ fn write_runner_file(pkg_name: &str) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn update_mod_file(pkg_name: &str) -> Result<(), anyhow::Error> {
+fn update_mod_file(pkg_name: PackageName) -> Result<(), anyhow::Error> {
     let days = std::fs::read_to_string("src/days/mod.rs")?;
     let mods = days
         .lines()
@@ -75,7 +88,7 @@ fn update_mod_file(pkg_name: &str) -> Result<(), anyhow::Error> {
                 .map(|(_, day)| day)
                 .map_err(|err| anyhow::anyhow!("failed to parse module line: {err}"))
         })
-        .chain(std::iter::once(Ok(pkg_name.to_string())))
+        .chain(std::iter::once(Ok(pkg_name)))
         .collect::<Result<HashSet<_>, _>>()?;
 
     let mut output = String::new();
@@ -88,7 +101,7 @@ fn update_mod_file(pkg_name: &str) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn write_solver_file(pkg_name: &str) -> Result<(), anyhow::Error> {
+fn write_solver_file(pkg_name: PackageName) -> Result<(), anyhow::Error> {
     let solver = format!(
         r#"
 use crate::{{DayResult, IntoDayResult}};
@@ -127,7 +140,7 @@ mod tests {{
     Ok(())
 }
 
-fn write_test_files(pkg_name: &str) -> Result<(), anyhow::Error> {
+fn write_test_files(pkg_name: PackageName) -> Result<(), anyhow::Error> {
     File::create(format!("input/{pkg_name}.txt"))?;
     File::create(format!("input/{pkg_name}_test.txt"))?;
 
