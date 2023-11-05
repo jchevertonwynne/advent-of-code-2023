@@ -1,6 +1,6 @@
 use std::{
     cmp::Reverse,
-    fmt::{Display, Formatter},
+    fmt::{Debug, Display, Formatter},
     path::PathBuf,
 };
 
@@ -10,7 +10,6 @@ pub mod days;
 
 macro_rules! impl_answer_enum {
     ( $( ($variant:tt, $ty:ty) ),* ) => {
-        #[derive(Debug)]
         pub enum Answers {
             $(
                 $variant($ty),
@@ -27,6 +26,16 @@ macro_rules! impl_answer_enum {
 
         // assumes all types impl Display
         impl Display for Answers {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $(
+                        Answers::$variant(t) => write!(f, "{t}"),
+                    )*
+                }
+            }
+        }
+
+        impl Debug for Answers {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
                     $(
