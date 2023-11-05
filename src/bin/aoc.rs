@@ -141,40 +141,81 @@ mod tests {{
     Ok(())
 }
 
-fn write_test_files(pkg_name: &str) -> Result<(), anyhow::Error> {
-    match std::env::var("AOC_SESSION") {
-        Ok(session) => {
-            if let Ok(mut file) = File::options()
-                .create_new(true)
-                .write(true)
-                .open(format!("input/{pkg_name}.txt"))
-            {
-                let year = match std::env::var("AOC_YEAR") {
-                    Ok(year) => year.parse()?,
-                    Err(_) => 2023,
-                };
-                let client = Client::new();
-                let request = client
-                    .get(format!(
-                        "https://adventofcode.com/{year}/day/{day}/input",
-                        day = pkg_name
-                    ))
-                    .header(
-                        "sender",
-                        "https://github.com/jchevertonwynne/advent-of-code-2023",
-                    )
-                    .header("Cookie", format!("session={session}"))
-                    .build()?;
-                let response = client.execute(request)?.text()?;
-                println!("i need to find it, response = {response}");
-                file.write_all(response.as_bytes())?;
-            }
-        }
-        Err(_) => {
-            File::create(format!("input/{pkg_name}.txt"))?;
-        }
+fn write_test_files(pkg_name: PackageName) -> Result<(), anyhow::Error> {
+    if let Ok(session) = std::env::var("AOC_SESSION") {
+        retrieve_day_input_and_write_to_file(pkg_name, session)?;
+    } else {
+        File::create(format!("input/{pkg_name}.txt"))?;
     };
     File::create(format!("input/{pkg_name}_test.txt"))?;
 
     Ok(())
+}
+
+fn retrieve_day_input_and_write_to_file(
+    pkg_name: PackageName,
+    session: String,
+) -> Result<(), anyhow::Error> {
+    let year = std::env::var("AOC_YEAR")
+        .context("failed to retrieve AOC_YEAR env var")
+        .and_then(|year| year.parse().context("failed to parse AOC_YEAR env var"))
+        .unwrap_or(2023);
+
+    let input = retrieve_input_cached_or_not(pkg_name, session, year)?;
+
+    File::options()
+        .create_new(true)
+        .write(true)
+        .open(format!("input/{pkg_name}.txt"))?
+        .write_all(input.as_bytes())?;
+
+    Ok(())
+}
+
+fn retrieve_input_cached_or_not(
+    pkg_name: PackageName,
+    session: String,
+    year: i32,
+) -> Result<String, anyhow::Error> {
+    let home = std::env::var("HOME")?;
+
+    let cache_file = format!("{home}/.aoc/{year}_{day}.txt", day = pkg_name.0);
+    if let Ok(cached) = std::fs::read_to_string(&cache_file) {
+        println!("serving cached input");
+        return Ok(cached);
+    }
+
+    let url = format!(
+        "https://adventofcode.com/{year}/day/{day}/input",
+        day = pkg_name.0
+    );
+    println!("retrieving input from url {url}");
+
+    let client = Client::new();
+    let request = client
+        .get(url)
+        .header(
+            "sender",
+            "https://github.com/jchevertonwynne/advent-of-code-2023",
+        )
+        .header("Cookie", format!("session={session}"))
+        .build()?;
+
+    let response = client.execute(request)?.text()?;
+    println!("retrieved input");
+
+    if std::fs::create_dir(format!("{home}/.aoc")).is_ok() {
+        println!("created ~/.aoc");
+    }
+
+    File::options()
+        .create(true)
+        .write(true)
+        .open(&cache_file)
+        .context("failed to create cache file")?
+        .write_all(response.as_bytes())?;
+
+    println!("cached input to {cache_file}");
+
+    Ok(response)
 }
