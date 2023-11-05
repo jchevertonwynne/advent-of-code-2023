@@ -1,5 +1,4 @@
 use anyhow::Context;
-use itertools::Itertools;
 use nom::{
     bytes::complete::tag,
     combinator::{all_consuming, map},
@@ -7,15 +6,17 @@ use nom::{
     IResult,
 };
 use reqwest::blocking::ClientBuilder;
+use tracing::{error, info};
 
 use std::{
-    collections::HashSet,
+    collections::BTreeSet,
     fmt::{Display, Write as _},
     fs::File,
     io::Write as _,
 };
 
 fn main() -> anyhow::Result<()> {
+    setup_tracing()?;
     ensure_in_aoc_repository()?;
     let pkg_name = get_pkg_name()?;
     write_runner_file(pkg_name)?;
@@ -25,9 +26,19 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn setup_tracing() -> Result<(), anyhow::Error> {
+    tracing_subscriber::fmt()
+        .try_init()
+        .map_err(|err| anyhow::anyhow!(err))?;
+
+    Ok(())
+}
+
 fn ensure_in_aoc_repository() -> Result<(), anyhow::Error> {
+    let expected_dir = "advent-of-code-2023";
     let cwd = std::env::current_dir()?;
-    if !cwd.ends_with("advent-of-code-2023") {
+    if !cwd.ends_with(expected_dir) {
+        error!("not in {expected_dir}: {cwd:?}");
         anyhow::bail!("you are in the wrong directory: {cwd:?}");
     };
 
@@ -90,10 +101,10 @@ fn update_mod_file(pkg_name: PackageName) -> Result<(), anyhow::Error> {
                 .map_err(|err| anyhow::anyhow!("failed to parse module line: {err}"))
         })
         .chain(std::iter::once(Ok(pkg_name)))
-        .collect::<Result<HashSet<_>, _>>()?;
+        .collect::<Result<BTreeSet<_>, _>>()?;
 
     let mut output = String::new();
-    for m in mods.into_iter().sorted() {
+    for m in mods.into_iter() {
         writeln!(&mut output, "pub mod {m};")?;
     }
 
@@ -185,7 +196,7 @@ fn retrieve_cached_or_fresh_input(
 ) -> Result<String, anyhow::Error> {
     match std::fs::read_to_string(cache_file) {
         Ok(cached) => {
-            println!("serving cached input");
+            info!("serving cached input");
             return Ok(cached);
         }
         Err(err) => {
@@ -222,7 +233,7 @@ fn retrieve_fresh(
         "https://adventofcode.com/{year}/day/{day}/input",
         day = pkg_name.0
     );
-    println!("retrieving input from url {url}");
+    info!("retrieving input from url {url}");
 
     let client = ClientBuilder::new()
         .user_agent("https://github.com/jchevertonwynne/advent-of-code-2023")
@@ -234,7 +245,7 @@ fn retrieve_fresh(
         .build()?;
 
     let response = client.execute(request)?.text()?;
-    println!("retrieved input");
+    info!("retrieved input");
 
     Ok(response)
 }
@@ -249,11 +260,11 @@ fn cache_response(
             return Err(err.into());
         }
     } else {
-        println!("created ~/.aoc")
+        info!("created ~/.aoc")
     }
 
     std::fs::write(cache_file, response.as_bytes())?;
-    println!("cached input to {cache_file}");
+    info!("cached input to {cache_file}");
 
     Ok(())
 }
