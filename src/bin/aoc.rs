@@ -6,6 +6,7 @@ use nom::{
     sequence::{delimited, preceded},
     IResult,
 };
+use reqwest::blocking::Client;
 
 use std::{collections::HashSet, fmt::Write as _, fs::File, io::Write as _};
 
@@ -128,7 +129,38 @@ mod tests {{
 }
 
 fn write_test_files(pkg_name: &str) -> Result<(), anyhow::Error> {
-    File::create(format!("input/{pkg_name}.txt"))?;
+    match std::env::var("AOC_SESSION") {
+        Ok(session) => {
+            if let Ok(mut file) = File::options()
+                .create_new(true)
+                .write(true)
+                .open(format!("input/{pkg_name}.txt"))
+            {
+                let year = match std::env::var("AOC_YEAR") {
+                    Ok(year) => year.parse()?,
+                    Err(_) => 2023,
+                };
+                let client = Client::new();
+                let request = client
+                    .get(format!(
+                        "https://adventofcode.com/{year}/day/{day}/input",
+                        day = pkg_name
+                    ))
+                    .header(
+                        "sender",
+                        "https://github.com/jchevertonwynne/advent-of-code-2023",
+                    )
+                    .header("Cookie", format!("session={session}"))
+                    .build()?;
+                let response = client.execute(request)?.text()?;
+                println!("i need to find it, response = {response}");
+                file.write_all(response.as_bytes())?;
+            }
+        }
+        Err(_) => {
+            File::create(format!("input/{pkg_name}.txt"))?;
+        }
+    };
     File::create(format!("input/{pkg_name}_test.txt"))?;
 
     Ok(())
