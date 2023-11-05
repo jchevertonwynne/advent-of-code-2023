@@ -180,9 +180,16 @@ fn retrieve_cached_or_fresh_input(
     let cache_folder = std::env::var("AOC_CACHE")?;
 
     let cache_file = format!("{cache_folder}/{year}_{day}.txt", day = pkg_name.0);
-    if let Ok(cached) = std::fs::read_to_string(&cache_file) {
-        println!("serving cached input");
-        return Ok(cached);
+    match std::fs::read_to_string(&cache_file) {
+        Ok(cached) => {
+            println!("serving cached input");
+            return Ok(cached);
+        }
+        Err(err) => {
+            if err.kind() != std::io::ErrorKind::NotFound {
+                return Err(err.into());
+            }
+        }
     }
 
     retrieve_and_cache_fresh_input(pkg_name, cache_folder, cache_file, year, session)
@@ -214,8 +221,12 @@ fn retrieve_and_cache_fresh_input(
     let response = client.execute(request)?.text()?;
     println!("retrieved input");
 
-    if std::fs::create_dir(cache_folder).is_ok() {
-        println!("created ~/.aoc");
+    if let Err(err) = std::fs::create_dir(cache_folder) {
+        if err.kind() != std::io::ErrorKind::AlreadyExists {
+            return Err(err.into());
+        }
+    } else {
+        println!("created ~/.aoc")
     }
 
     std::fs::write(&cache_file, response.as_bytes())?;
