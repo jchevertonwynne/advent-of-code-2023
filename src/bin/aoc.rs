@@ -6,7 +6,7 @@ use nom::{
     sequence::{delimited, preceded},
     IResult,
 };
-use reqwest::blocking::Client;
+use reqwest::blocking::ClientBuilder;
 
 use std::{
     collections::HashSet,
@@ -224,13 +224,12 @@ fn retrieve_fresh(
     );
     println!("retrieving input from url {url}");
 
-    let client = Client::new();
+    let client = ClientBuilder::new()
+        .user_agent("https://github.com/jchevertonwynne/advent-of-code-2023")
+        .build()?;
+
     let request = client
         .get(url)
-        .header(
-            "sender",
-            "https://github.com/jchevertonwynne/advent-of-code-2023",
-        )
         .header("Cookie", format!("session={session}"))
         .build()?;
 
