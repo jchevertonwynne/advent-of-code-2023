@@ -161,7 +161,7 @@ fn retrieve_day_input_and_write_to_file(
         .and_then(|year| year.parse().context("failed to parse AOC_YEAR env var"))
         .unwrap_or(2023);
 
-    let input = retrieve_input_cached_or_not(pkg_name, session, year)?;
+    let input = retrieve_cached_or_fresh_input(pkg_name, session, year)?;
 
     File::options()
         .create_new(true)
@@ -172,19 +172,29 @@ fn retrieve_day_input_and_write_to_file(
     Ok(())
 }
 
-fn retrieve_input_cached_or_not(
+fn retrieve_cached_or_fresh_input(
     pkg_name: PackageName,
     session: String,
     year: i32,
 ) -> Result<String, anyhow::Error> {
-    let home = std::env::var("HOME")?;
+    let cache_folder = std::env::var("AOC_CACHE")?;
 
-    let cache_file = format!("{home}/.aoc/{year}_{day}.txt", day = pkg_name.0);
+    let cache_file = format!("{cache_folder}/{year}_{day}.txt", day = pkg_name.0);
     if let Ok(cached) = std::fs::read_to_string(&cache_file) {
         println!("serving cached input");
         return Ok(cached);
     }
 
+    retrieve_and_cache_fresh_input(pkg_name, cache_folder, cache_file, year, session)
+}
+
+fn retrieve_and_cache_fresh_input(
+    pkg_name: PackageName,
+    cache_folder: String,
+    cache_file: String,
+    year: i32,
+    session: String,
+) -> Result<String, anyhow::Error> {
     let url = format!(
         "https://adventofcode.com/{year}/day/{day}/input",
         day = pkg_name.0
@@ -204,16 +214,11 @@ fn retrieve_input_cached_or_not(
     let response = client.execute(request)?.text()?;
     println!("retrieved input");
 
-    if std::fs::create_dir(format!("{home}/.aoc")).is_ok() {
+    if std::fs::create_dir(cache_folder).is_ok() {
         println!("created ~/.aoc");
     }
 
-    File::options()
-        .create(true)
-        .write(true)
-        .open(&cache_file)
-        .context("failed to create cache file")?
-        .write_all(response.as_bytes())?;
+    std::fs::write(&cache_file, response.as_bytes())?;
 
     println!("cached input to {cache_file}");
 

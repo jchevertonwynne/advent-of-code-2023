@@ -34,7 +34,6 @@ if you delete this & rerun generation it will overwrite any of the other files
 
 ### `aoc` env vars
 
-- `AOC_SESSION` - Your session cookie. You can find this on the network tab in your browser when you press f12. If this is not provided an empty input file will be created instead
-- `AOC_YEAR` - The year to retrieve. This defaults to 2023
-
-If retrieving inputs, `aoc` requires the `HOME` env var to be set
+- `AOC_SESSION` - Your session cookie - equired. You can find this on the network tab in your browser when you press f12. If this is not provided an empty input file will be created instead
+- `AOC_CACHE` - The location for the local input cache - required
+- `AOC_YEAR` - The year to retrieve - optional, defaults to 2023
