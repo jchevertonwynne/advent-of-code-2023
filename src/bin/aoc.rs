@@ -8,12 +8,7 @@ use nom::{
 use reqwest::blocking::ClientBuilder;
 use tracing::{error, info};
 
-use std::{
-    collections::BTreeSet,
-    fmt::{Display, Write as _},
-    fs::File,
-    io::Write as _,
-};
+use std::{collections::BTreeSet, fmt::Display, fs::File, io::Write};
 
 fn main() -> anyhow::Result<()> {
     setup_tracing()?;
@@ -22,7 +17,7 @@ fn main() -> anyhow::Result<()> {
     write_runner_file(pkg_name)?;
     update_mod_file(pkg_name)?;
     write_solver_file(pkg_name)?;
-    write_test_files(pkg_name)?;
+    write_input_files(pkg_name)?;
     Ok(())
 }
 
@@ -103,12 +98,10 @@ fn update_mod_file(pkg_name: PackageName) -> Result<(), anyhow::Error> {
         .chain(std::iter::once(Ok(pkg_name)))
         .collect::<Result<BTreeSet<_>, _>>()?;
 
-    let mut output = String::new();
+    let mut output = std::fs::File::open("src/days/mod.rs")?;
     for m in mods.into_iter() {
         writeln!(&mut output, "pub mod {m};")?;
     }
-
-    std::fs::write("src/days/mod.rs", output.as_bytes())?;
 
     Ok(())
 }
@@ -152,37 +145,30 @@ mod tests {{
     Ok(())
 }
 
-fn write_test_files(pkg_name: PackageName) -> Result<(), anyhow::Error> {
-    if let Ok(session) = std::env::var("AOC_SESSION") {
-        let year = std::env::var("AOC_YEAR")
-            .context("failed to retrieve AOC_YEAR env var")
-            .and_then(|year| year.parse().context("failed to parse AOC_YEAR env var"))
-            .unwrap_or(2023);
-        let cache_folder = std::env::var("AOC_CACHE")?;
-        let cache_file = format!("{cache_folder}/{year}_{day}.txt", day = pkg_name.0);
-        retrieve_day_input_and_write_to_file(pkg_name, year, &session, &cache_folder, &cache_file)?;
-    } else {
-        File::create(format!("input/{pkg_name}.txt"))?;
-    };
+fn write_input_files(pkg_name: PackageName) -> Result<(), anyhow::Error> {
+    write_real_input(pkg_name)?;
+
     File::create(format!("input/{pkg_name}_test.txt"))?;
 
     Ok(())
 }
 
-fn retrieve_day_input_and_write_to_file(
-    pkg_name: PackageName,
-    year: i32,
-    session: &str,
-    cache_folder: &str,
-    cache_file: &str,
-) -> Result<(), anyhow::Error> {
-    let input = retrieve_cached_or_fresh_input(pkg_name, year, session, cache_folder, cache_file)?;
+fn write_real_input(pkg_name: PackageName) -> Result<(), anyhow::Error> {
+    if let Ok(session) = std::env::var("AOC_SESSION") {
+        let year = match std::env::var("AOC_YEAR") {
+            Ok(year) => year.parse().context("failed to parse AOC_YEAR env var")?,
+            Err(_) => 2023,
+        };
+        let cache_folder =
+            std::env::var("AOC_CACHE").context("failed to find AOC_CACHE env var")?;
+        let cache_file = format!("{cache_folder}/{year}_{day}.txt", day = pkg_name.0);
+        let input =
+            retrieve_cached_or_fresh_input(pkg_name, year, &session, &cache_folder, &cache_file)?;
 
-    File::options()
-        .create_new(true)
-        .write(true)
-        .open(format!("input/{pkg_name}.txt"))?
-        .write_all(input.as_bytes())?;
+        std::fs::write(format!("input/{pkg_name}.txt"), input.as_bytes())?;
+    } else {
+        File::create(format!("input/{pkg_name}.txt"))?;
+    };
 
     Ok(())
 }
