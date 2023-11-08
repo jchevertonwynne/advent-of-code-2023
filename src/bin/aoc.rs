@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{anyhow, bail, Context};
 use nom::{
     bytes::complete::tag,
     combinator::{all_consuming, map},
@@ -6,9 +6,14 @@ use nom::{
     IResult,
 };
 use reqwest::blocking::ClientBuilder;
-use tracing::{error, info};
+use tracing::info;
 
-use std::{collections::BTreeSet, fmt::Display, fs::File, io::Write};
+use std::{
+    collections::BTreeSet,
+    fmt::{Display, Formatter},
+    fs::File,
+    io::{ErrorKind, Write},
+};
 
 fn main() -> anyhow::Result<()> {
     setup_tracing()?;
@@ -24,7 +29,7 @@ fn main() -> anyhow::Result<()> {
 fn setup_tracing() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt()
         .try_init()
-        .map_err(|err| anyhow::anyhow!(err))?;
+        .map_err(|err| anyhow!(err))?;
 
     Ok(())
 }
@@ -33,8 +38,7 @@ fn ensure_in_aoc_repository() -> Result<(), anyhow::Error> {
     let expected_dir = "advent-of-code-2023";
     let cwd = std::env::current_dir()?;
     if !cwd.ends_with(expected_dir) {
-        error!("not in {expected_dir}: {cwd:?}");
-        anyhow::bail!("you are in the wrong directory: {cwd:?}");
+        bail!("not in {expected_dir}: {cwd:?}");
     };
 
     Ok(())
@@ -44,7 +48,7 @@ fn ensure_in_aoc_repository() -> Result<(), anyhow::Error> {
 struct PackageName(u8);
 
 impl Display for PackageName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "day{:0>2}", self.0)
     }
 }
@@ -54,8 +58,8 @@ fn get_pkg_name() -> Result<PackageName, anyhow::Error> {
         .nth(1)
         .context("expected a second argument")?;
 
-    let (_, pkg_name) = parse_pkg_name(&pkg_name)
-        .map_err(|err| anyhow::anyhow!("failed to parse package name: {err}"))?;
+    let (_, pkg_name) =
+        parse_pkg_name(&pkg_name).map_err(|err| anyhow!("failed to parse package name: {err}"))?;
 
     Ok(pkg_name)
 }
@@ -93,12 +97,12 @@ fn update_mod_file(pkg_name: PackageName) -> Result<(), anyhow::Error> {
         .map(|line| {
             parse_mod_line(line)
                 .map(|(_, day)| day)
-                .map_err(|err| anyhow::anyhow!("failed to parse module line: {err}"))
+                .map_err(|err| anyhow!("failed to parse module line: {err}"))
         })
         .chain(std::iter::once(Ok(pkg_name)))
         .collect::<Result<BTreeSet<_>, _>>()?;
 
-    let mut output = std::fs::File::open("src/days/mod.rs")?;
+    let mut output = File::open("src/days/mod.rs")?;
     for m in mods.into_iter() {
         writeln!(&mut output, "pub mod {m};")?;
     }
@@ -186,7 +190,7 @@ fn retrieve_cached_or_fresh_input(
             return Ok(cached);
         }
         Err(err) => {
-            if err.kind() != std::io::ErrorKind::NotFound {
+            if err.kind() != ErrorKind::NotFound {
                 return Err(err.into());
             }
         }
@@ -242,7 +246,7 @@ fn cache_response(
     response: &str,
 ) -> Result<(), anyhow::Error> {
     if let Err(err) = std::fs::create_dir(cache_folder) {
-        if err.kind() != std::io::ErrorKind::AlreadyExists {
+        if err.kind() != ErrorKind::AlreadyExists {
             return Err(err.into());
         }
     } else {
