@@ -1,7 +1,6 @@
 use std::{
     cmp::Reverse,
     fmt::{Debug, Display, Formatter},
-    path::PathBuf,
 };
 
 use arrayvec::ArrayVec;
@@ -228,35 +227,13 @@ where
     }
 }
 
-#[macro_export]
-macro_rules! get_input_file {
-    ($day:expr) => {{
-        use advent_of_code_2023::input_file_path;
-        let is_test = std::env::var_os("TEST").is_some();
-        let filepath = input_file_path(&$day, is_test);
-        std::fs::read_to_string(&filepath)?
-    }};
-}
-
-#[macro_export]
-macro_rules! get_input_file_and_test {
-    ($day:expr) => {{
-        use advent_of_code_2023::input_file_path;
-        let is_test = std::env::var_os("TEST").is_some();
-        let filepath = input_file_path(&$day, is_test);
-        (std::fs::read_to_string(&filepath)?, is_test)
-    }};
-}
-
-pub fn input_file_path(day: &str, is_test: bool) -> PathBuf {
-    let mut path: PathBuf = "input".into();
-    if is_test {
-        path.push(format!("{day}_test.txt"));
+pub fn get_input(day: &str, is_test: bool) -> std::io::Result<String> {
+    let filepath = if is_test {
+        format!("input/{day}_test.txt")
     } else {
-        path.push(format!("{day}.txt"));
-    }
-
-    path
+        format!("input/{day}.txt")
+    };
+    std::fs::read_to_string(filepath)
 }
 
 #[macro_export]
@@ -266,11 +243,12 @@ macro_rules! aoc {
     };
     ($day:expr, $daymod:ident) => {
         use advent_of_code_2023::days::$daymod;
-        use advent_of_code_2023::get_input_file;
+        use advent_of_code_2023::get_input;
 
         fn main() -> anyhow::Result<()> {
             let day = stringify!($day);
-            let input = get_input_file!(day);
+            let is_test = std::env::var_os("TEST").is_some();
+            let input = get_input(day, is_test)?;
             let solution = $daymod::solve(&input)?;
 
             println!("{day}: {solution}");
@@ -283,11 +261,12 @@ macro_rules! aoc {
     };
     ($day:expr, $daymod:ident, is_test) => {
         use advent_of_code_2023::days::$daymod;
-        use advent_of_code_2023::get_input_file_and_test;
+        use advent_of_code_2023::get_input;
 
         fn main() -> anyhow::Result<()> {
             let day = stringify!($day);
-            let (input, is_test) = get_input_file_and_test!(day);
+            let is_test = std::env::var_os("TEST").is_some();
+            let input = get_input(day, is_test)?;
             let solution = $daymod::solve(&input, is_test)?;
 
             println!("{day}: {solution}");
