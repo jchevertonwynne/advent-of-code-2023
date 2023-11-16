@@ -247,6 +247,8 @@ fn retrieve_fresh(
     let response = client
         .execute(request)
         .context("failed to perform http request")?
+        .error_for_status()
+        .context("bad http response code returned")?
         .text()
         .context("failed to read http response body")?;
     info!("retrieved input");
