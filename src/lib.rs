@@ -238,21 +238,21 @@ pub fn get_input(day: &str, is_test: bool) -> std::io::Result<String> {
 
 #[macro_export]
 macro_rules! aoc_args_first {
-    ($a:tt, $b:tt) => {
-        $a
+    ($solver:expr, $a:tt, $b:tt) => {
+        $solver($a)?
     };
 }
 
 #[macro_export]
 macro_rules! aoc_args_both {
-    ($a:tt, $b:tt) => {
-        ($a, $b)
+    ($solver:expr, $a:tt, $b:tt) => {
+        $solver($a, $b)?
     };
 }
 
 #[macro_export]
 macro_rules! aoc_impl {
-    ($day:expr, $daymod:ident, $args:tt) => {
+    ($day:expr, $daymod:ident, $solver:tt) => {
         use $crate::days::$daymod::solve;
         use $crate::get_input;
 
@@ -260,7 +260,7 @@ macro_rules! aoc_impl {
             let day = stringify!($day);
             let is_test = std::env::var_os("TEST").is_some();
             let input = get_input(day, is_test)?;
-            let solution = solve($args!((&input), is_test))?;
+            let solution = $solver!(solve, (&input), is_test);
 
             println!("{day}: {solution}");
 
