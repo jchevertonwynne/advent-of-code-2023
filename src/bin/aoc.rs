@@ -19,24 +19,24 @@ fn main() -> anyhow::Result<()> {
     setup_tracing()?;
     ensure_in_aoc_repository()?;
     let pkg_name = get_pkg_name()?;
-    write_runner_file(pkg_name)?;
-    update_mod_file(pkg_name)?;
-    write_solver_file(pkg_name)?;
-    write_input_files(pkg_name)?;
+    write_runner_file(pkg_name).context("coult not write runner")?;
+    update_mod_file(pkg_name).context("could not update mod file")?;
+    write_solver_file(pkg_name).context("could not write solver file")?;
+    write_input_files(pkg_name).context("could not write input files")?;
     Ok(())
 }
 
 fn setup_tracing() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt()
         .try_init()
-        .map_err(|err| anyhow!(err))?;
+        .map_err(|err| anyhow!("failed to setup tracing: {}", err))?;
 
     Ok(())
 }
 
 fn ensure_in_aoc_repository() -> Result<(), anyhow::Error> {
     let expected_dir = "advent-of-code-2023";
-    let cwd = std::env::current_dir()?;
+    let cwd = std::env::current_dir().context("failed to find current dir")?;
     if !cwd.ends_with(expected_dir) {
         bail!("not in {expected_dir}: {cwd:?}");
     };
@@ -85,13 +85,14 @@ fn write_runner_file(pkg_name: PackageName) -> Result<(), anyhow::Error> {
         .write(true)
         .open(format!("src/bin/{pkg_name}.rs"))
         .context("runner file already exists")?
-        .write_all(format!("advent_of_code_2023::aoc!({pkg_name});").as_bytes())?;
+        .write_all(format!("advent_of_code_2023::aoc!({pkg_name});").as_bytes())
+        .context("failed to write runner file")?;
 
     Ok(())
 }
 
 fn update_mod_file(pkg_name: PackageName) -> Result<(), anyhow::Error> {
-    let days = std::fs::read_to_string("src/days/mod.rs")?;
+    let days = std::fs::read_to_string("src/days/mod.rs").context("failed to read mod file")?;
     let mods = days
         .lines()
         .map(|line| {
@@ -100,11 +101,15 @@ fn update_mod_file(pkg_name: PackageName) -> Result<(), anyhow::Error> {
                 .map_err(|err| anyhow!("failed to parse module line: {err}"))
         })
         .chain(std::iter::once(Ok(pkg_name)))
-        .collect::<Result<BTreeSet<_>, _>>()?;
+        .collect::<Result<BTreeSet<_>, _>>()
+        .context("failed to parse mod.rs line")?;
 
-    let mut output = File::open("src/days/mod.rs")?;
+    let mut output = File::options()
+        .write(true)
+        .open("src/days/mod.rs")
+        .context("failed to open mod.rs to write updates")?;
     for m in mods.into_iter() {
-        writeln!(&mut output, "pub mod {m};")?;
+        writeln!(&mut output, "pub mod {m};").context("failed to write line to mod.rs")?;
     }
 
     Ok(())
@@ -144,7 +149,8 @@ mod tests {{
     }}
 }}"#
     );
-    std::fs::write(format!("src/days/{pkg_name}.rs"), solver.as_bytes())?;
+    std::fs::write(format!("src/days/{pkg_name}.rs"), solver.as_bytes())
+        .context("failed to write solver file")?;
 
     Ok(())
 }
@@ -152,7 +158,8 @@ mod tests {{
 fn write_input_files(pkg_name: PackageName) -> Result<(), anyhow::Error> {
     write_real_input(pkg_name)?;
 
-    File::create(format!("input/{pkg_name}_test.txt"))?;
+    File::create(format!("input/{pkg_name}_test.txt"))
+        .context("failed to write test input file")?;
 
     Ok(())
 }
@@ -169,9 +176,10 @@ fn write_real_input(pkg_name: PackageName) -> Result<(), anyhow::Error> {
         let input =
             retrieve_cached_or_fresh_input(pkg_name, year, &session, &cache_folder, &cache_file)?;
 
-        std::fs::write(format!("input/{pkg_name}.txt"), input.as_bytes())?;
+        std::fs::write(format!("input/{pkg_name}.txt"), input.as_bytes())
+            .context("failed to write input file")?;
     } else {
-        File::create(format!("input/{pkg_name}.txt"))?;
+        File::create(format!("input/{pkg_name}.txt")).context("failed to write input file")?;
     };
 
     Ok(())
@@ -191,7 +199,7 @@ fn retrieve_cached_or_fresh_input(
         }
         Err(err) => {
             if err.kind() != ErrorKind::NotFound {
-                return Err(err.into());
+                return Err(err).context("failed to read cache input file");
             }
         }
     }
@@ -227,14 +235,20 @@ fn retrieve_fresh(
 
     let client = ClientBuilder::new()
         .user_agent("https://github.com/jchevertonwynne/advent-of-code-2023")
-        .build()?;
+        .build()
+        .context("failed to build http client")?;
 
     let request = client
         .get(url)
         .header("Cookie", format!("session={session}"))
-        .build()?;
+        .build()
+        .context("failed to build http request")?;
 
-    let response = client.execute(request)?.text()?;
+    let response = client
+        .execute(request)
+        .context("failed to perform http request")?
+        .text()
+        .context("failed to read http response body")?;
     info!("retrieved input");
 
     Ok(response)
@@ -247,13 +261,14 @@ fn cache_response(
 ) -> Result<(), anyhow::Error> {
     if let Err(err) = std::fs::create_dir(cache_folder) {
         if err.kind() != ErrorKind::AlreadyExists {
-            return Err(err.into());
+            return Err(err).context("failed to create aoc cache directory");
         }
     } else {
         info!("created ~/.aoc")
     }
 
-    std::fs::write(cache_file, response.as_bytes())?;
+    std::fs::write(cache_file, response.as_bytes())
+        .context("failed to write aoc input to cache")?;
     info!("cached input to {cache_file}");
 
     Ok(())

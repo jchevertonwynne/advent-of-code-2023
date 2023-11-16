@@ -237,41 +237,46 @@ pub fn get_input(day: &str, is_test: bool) -> std::io::Result<String> {
 }
 
 #[macro_export]
+macro_rules! aoc_args_first {
+    ($a:tt, $b:tt) => {
+        $a
+    };
+}
+
+#[macro_export]
+macro_rules! aoc_args_both {
+    ($a:tt, $b:tt) => {
+        ($a, $b)
+    };
+}
+
+#[macro_export]
+macro_rules! aoc_impl {
+    ($day:expr, $daymod:ident, $args:tt) => {
+        use $crate::days::$daymod::solve;
+        use $crate::get_input;
+
+        fn main() -> anyhow::Result<()> {
+            let day = stringify!($day);
+            let is_test = std::env::var_os("TEST").is_some();
+            let input = get_input(day, is_test)?;
+            let solution = solve($args!((&input), is_test))?;
+
+            println!("{day}: {solution}");
+
+            Ok(())
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! aoc {
     ($day:tt) => {
-        advent_of_code_2023::aoc!($day, $day);
-    };
-    ($day:expr, $daymod:ident) => {
-        use advent_of_code_2023::days::$daymod;
-        use advent_of_code_2023::get_input;
-
-        fn main() -> anyhow::Result<()> {
-            let day = stringify!($day);
-            let is_test = std::env::var_os("TEST").is_some();
-            let input = get_input(day, is_test)?;
-            let solution = $daymod::solve(&input)?;
-
-            println!("{day}: {solution}");
-
-            Ok(())
-        }
+        use $crate::aoc_args_first;
+        $crate::aoc_impl!($day, $day, aoc_args_first);
     };
     ($day:tt, is_test) => {
-        advent_of_code_2023::aoc!($day, $day, is_test);
-    };
-    ($day:expr, $daymod:ident, is_test) => {
-        use advent_of_code_2023::days::$daymod;
-        use advent_of_code_2023::get_input;
-
-        fn main() -> anyhow::Result<()> {
-            let day = stringify!($day);
-            let is_test = std::env::var_os("TEST").is_some();
-            let input = get_input(day, is_test)?;
-            let solution = $daymod::solve(&input, is_test)?;
-
-            println!("{day}: {solution}");
-
-            Ok(())
-        }
+        use $crate::aoc_args_both;
+        $crate::aoc_impl!($day, $day, aoc_args_both);
     };
 }
