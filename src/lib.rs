@@ -112,6 +112,19 @@ where
     }
 }
 
+impl<A> IntoDayResult for (A,)
+where
+    A: Into<Answers>,
+{
+    fn into_day_result(self) -> DayResult {
+        let (a,) = self;
+        DayResult {
+            part1: Some(a.into()),
+            part2: None,
+        }
+    }
+}
+
 impl<A, B> IntoDayResult for (A, B)
 where
     A: Into<Answers>,
@@ -252,8 +265,8 @@ macro_rules! aoc_args_both {
 
 #[macro_export]
 macro_rules! aoc_impl {
-    ($day:expr, $daymod:ident, $solver:tt) => {
-        use $crate::days::$daymod::solve;
+    ($day:tt, $solver:tt) => {
+        use $crate::days::$day::solve;
         use $crate::get_input;
 
         fn main() -> anyhow::Result<()> {
@@ -273,10 +286,10 @@ macro_rules! aoc_impl {
 macro_rules! aoc {
     ($day:tt) => {
         use $crate::aoc_args_input_only;
-        $crate::aoc_impl!($day, $day, aoc_args_input_only);
+        $crate::aoc_impl!($day, aoc_args_input_only);
     };
     ($day:tt, is_test) => {
         use $crate::aoc_args_both;
-        $crate::aoc_impl!($day, $day, aoc_args_both);
+        $crate::aoc_impl!($day, aoc_args_both);
     };
 }

@@ -25,7 +25,7 @@ For day 2 this will create the following files:
 - binary in `src/bin`
 - soution in `src/days`
 - added to `src/days/mod.rs`
-- empty input files for resl & test inputs
+- input files for real & test inputs (real input if env vars provided)
 
 Generated days are not automatically added to benchmarks
 
