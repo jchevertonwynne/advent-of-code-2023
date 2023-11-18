@@ -185,7 +185,15 @@ where
 
     fn try_collect_by_fn<const N: usize, F>(self, f: F) -> Result<[T; N], CollectError>
     where
-        F: for<'a> Callable<&'a T>;
+        F: for<'a> Callable<&'a T>,
+    {
+        self.collect_by_fn(f)
+            .into_inner()
+            .map_err(|arr| CollectError {
+                expected: N,
+                actual: arr.len(),
+            })
+    }
 
     fn collect_largest<const N: usize>(self) -> ArrayVec<T, N>
     where
@@ -222,55 +230,6 @@ impl<I, T> CollectN<T> for I
 where
     I: Iterator<Item = T>,
 {
-    fn try_collect_by_fn<const N: usize, F>(self, f: F) -> Result<[T; N], CollectError>
-    where
-        F: for<'a> Callable<&'a T>,
-    {
-        let mut indices_set = 0;
-        let mut res: [MaybeUninit<T>; N] = std::array::from_fn(|_| MaybeUninit::uninit());
-
-        if N == 0 {
-            // SAFETY - we are transmuting a 0 length array
-            return Ok(unsafe { std::mem::transmute_copy(&res) });
-        }
-
-        let comparer = |a: &_, b: &_| Ord::cmp(&f.call(a), &f.call(b));
-
-        for (i, item) in self.enumerate() {
-            if i >= N {
-                // SAFETY - we know we've initialised the last value else we'd be in the other branch
-                let last = unsafe { res[N - 1].assume_init_read() };
-
-                let smallest = std::cmp::min_by(item, last, comparer);
-
-                res[N - 1].write(smallest);
-            } else {
-                res[indices_set].write(item);
-                indices_set += 1;
-            }
-
-            // SAFETY - we only transmute MaybeUninits that we know we have set
-            let slice: &mut [T] = unsafe { std::mem::transmute(&mut res[..indices_set]) };
-            slice.sort_unstable_by(comparer);
-        }
-
-        if indices_set == N {
-            // SAFETY - we know we've initialised all values
-            Ok(unsafe { std::mem::transmute_copy(&res) })
-        } else {
-            for v in &mut res[..indices_set] {
-                // SAFETY - we only drop values we know we've initialised
-                unsafe {
-                    v.assume_init_drop();
-                }
-            }
-            Err(CollectError {
-                expected: N,
-                actual: indices_set,
-            })
-        }
-    }
-
     fn collect_by_fn<const N: usize, F>(self, f: F) -> ArrayVec<T, N>
     where
         F: for<'a> Callable<&'a T>,
