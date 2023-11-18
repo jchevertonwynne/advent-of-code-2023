@@ -226,9 +226,8 @@ where
     where
         F: for<'a> Callable<&'a T>,
     {
-        let mut res_len = 0;
-        // SAFETY - we're initialising an array of MaybeUninits
-        let mut res: [MaybeUninit<T>; N] = unsafe { MaybeUninit::uninit().assume_init() };
+        let mut indices_set = 0;
+        let mut res: [MaybeUninit<T>; N] = std::array::from_fn(|_| MaybeUninit::uninit());
 
         if N == 0 {
             // SAFETY - we are transmuting a 0 length array
@@ -240,33 +239,34 @@ where
         for (i, item) in self.enumerate() {
             if i >= N {
                 // SAFETY - we know we've initialised the last value else we'd be in the other branch
-                let last = unsafe { res[res_len - 1].assume_init_read() };
+                let last = unsafe { res[N - 1].assume_init_read() };
 
                 let smallest = std::cmp::min_by(item, last, comparer);
 
-                res[res_len - 1].write(smallest);
+                res[N - 1].write(smallest);
             } else {
-                res[res_len].write(item);
-                res_len += 1;
+                res[indices_set].write(item);
+                indices_set += 1;
             }
 
-            let slice: &mut [MaybeUninit<T>] = &mut res[0..res_len];
             // SAFETY - we only transmute MaybeUninits that we know we have set
-            let slice: &mut [T] = unsafe { std::mem::transmute(slice) };
+            let slice: &mut [T] = unsafe { std::mem::transmute(&mut res[..indices_set]) };
             slice.sort_unstable_by(comparer);
         }
 
-        if res_len == N {
+        if indices_set == N {
             // SAFETY - we know we've initialised all values
             Ok(unsafe { std::mem::transmute_copy(&res) })
         } else {
-            res[..res_len]
-                .iter_mut()
+            for v in &mut res[..indices_set] {
                 // SAFETY - we only drop values we know we've initialised
-                .for_each(|v| unsafe { v.assume_init_drop() });
+                unsafe {
+                    v.assume_init_drop();
+                }
+            }
             Err(CollectError {
                 expected: N,
-                actual: res_len,
+                actual: indices_set,
             })
         }
     }
