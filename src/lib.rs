@@ -1,6 +1,7 @@
 use std::{
     cmp::Reverse,
     fmt::{Debug, Display, Formatter},
+    mem::MaybeUninit,
 };
 
 use arrayvec::ArrayVec;
@@ -175,6 +176,17 @@ trait CollectN<T>
 where
     Self: Sized,
 {
+    fn try_collect_largest<const N: usize>(self) -> Result<[T; N], CollectError>
+    where
+        T: Ord,
+    {
+        self.try_collect_by_fn((|v| Reverse(v)) as for<'a> fn(&'a T) -> Reverse<&'a T>)
+    }
+
+    fn try_collect_by_fn<const N: usize, F>(self, f: F) -> Result<[T; N], CollectError>
+    where
+        F: for<'a> Callable<&'a T>;
+
     fn collect_largest<const N: usize>(self) -> ArrayVec<T, N>
     where
         T: Ord,
@@ -187,10 +199,78 @@ where
         F: for<'a> Callable<&'a T>;
 }
 
+#[derive(Debug)]
+struct CollectError {
+    expected: usize,
+    actual: usize,
+}
+
+impl Display for CollectError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "CollectError: expected {expected} items, only consumed {actual}",
+            expected = self.expected,
+            actual = self.actual
+        )
+    }
+}
+
+impl std::error::Error for CollectError {}
+
 impl<I, T> CollectN<T> for I
 where
     I: Iterator<Item = T>,
 {
+    fn try_collect_by_fn<const N: usize, F>(self, f: F) -> Result<[T; N], CollectError>
+    where
+        F: for<'a> Callable<&'a T>,
+    {
+        let mut res_len = 0;
+        // SAFETY - we're initialising an array of MaybeUninits
+        let mut res: [MaybeUninit<T>; N] = unsafe { MaybeUninit::uninit().assume_init() };
+
+        if N == 0 {
+            // SAFETY - we are transmuting a 0 length array
+            return Ok(unsafe { std::mem::transmute_copy(&res) });
+        }
+
+        let comparer = |a: &_, b: &_| Ord::cmp(&f.call(a), &f.call(b));
+
+        for (i, item) in self.enumerate() {
+            if i >= N {
+                // SAFETY - we know we've initialised the last value else we'd be in the other branch
+                let last = unsafe { res[res_len - 1].assume_init_read() };
+
+                let smallest = std::cmp::min_by(item, last, comparer);
+
+                res[res_len - 1].write(smallest);
+            } else {
+                res[res_len].write(item);
+                res_len += 1;
+            }
+
+            let slice: &mut [MaybeUninit<T>] = &mut res[0..res_len];
+            // SAFETY - we only transmute MaybeUninits that we know we have set
+            let slice: &mut [T] = unsafe { std::mem::transmute(slice) };
+            slice.sort_unstable_by(comparer);
+        }
+
+        if res_len == N {
+            // SAFETY - we know we've initialised all values
+            Ok(unsafe { std::mem::transmute_copy(&res) })
+        } else {
+            res[..res_len]
+                .iter_mut()
+                // SAFETY - we only drop values we know we've initialised
+                .for_each(|v| unsafe { v.assume_init_drop() });
+            Err(CollectError {
+                expected: N,
+                actual: res_len,
+            })
+        }
+    }
+
     fn collect_by_fn<const N: usize, F>(self, f: F) -> ArrayVec<T, N>
     where
         F: for<'a> Callable<&'a T>,

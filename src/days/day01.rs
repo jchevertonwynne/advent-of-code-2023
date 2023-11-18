@@ -7,7 +7,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
         .lines()
         .map(|line| line.parse::<usize>().ok())
         .batching(|it| it.while_some().sum1::<usize>())
-        .collect_largest::<3>();
+        .try_collect_largest::<3>()?;
 
     let part1 = top_three[0];
     let part2 = top_three.iter().sum::<usize>();
