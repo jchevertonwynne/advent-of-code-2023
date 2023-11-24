@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Context};
+use clap::Parser;
 use nom::{
     bytes::complete::tag,
     combinator::{all_consuming, map},
@@ -15,14 +16,25 @@ use std::{
     io::{ErrorKind, Write},
 };
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    day: u8,
+    #[arg(short, long, default_value_t = 2023)]
+    year: usize,
+    #[arg(short, long, default_value_t = false)]
+    overwrite: bool,
+}
+
 fn main() -> anyhow::Result<()> {
+    let args = Args::parse();
     setup_tracing()?;
     ensure_in_aoc_repository()?;
-    let pkg_name = get_pkg_name()?;
-    write_runner_file(pkg_name).context("coult not write runner")?;
+    let pkg_name = PackageName(args.day);
+    write_runner_file(pkg_name, args.overwrite).context("coult not write runner")?;
     update_mod_file(pkg_name).context("could not update mod file")?;
     write_solver_file(pkg_name).context("could not write solver file")?;
-    write_input_files(pkg_name).context("could not write input files")?;
+    write_input_files(pkg_name, args.year).context("could not write input files")?;
     Ok(())
 }
 
@@ -53,21 +65,6 @@ impl Display for PackageName {
     }
 }
 
-fn get_pkg_name() -> Result<PackageName, anyhow::Error> {
-    let pkg_name = std::env::args()
-        .nth(1)
-        .context("expected a second argument")?;
-
-    let (_, pkg_name) =
-        parse_pkg_name(&pkg_name).map_err(|err| anyhow!("failed to parse package name: {err}"))?;
-
-    Ok(pkg_name)
-}
-
-fn parse_pkg_name(input: &str) -> IResult<&str, PackageName> {
-    all_consuming(map(nom::character::complete::u8, PackageName))(input)
-}
-
 fn parse_mod_line(input: &str) -> IResult<&str, PackageName> {
     all_consuming(delimited(
         tag("pub mod "),
@@ -79,9 +76,9 @@ fn parse_mod_line(input: &str) -> IResult<&str, PackageName> {
     ))(input)
 }
 
-fn write_runner_file(pkg_name: PackageName) -> Result<(), anyhow::Error> {
+fn write_runner_file(pkg_name: PackageName, overwrite: bool) -> Result<(), anyhow::Error> {
     File::options()
-        .create_new(true)
+        .create_new(!overwrite)
         .write(true)
         .open(format!("src/bin/{pkg_name}.rs"))
         .context("runner file already exists")?
@@ -155,8 +152,8 @@ mod tests {{
     Ok(())
 }
 
-fn write_input_files(pkg_name: PackageName) -> Result<(), anyhow::Error> {
-    write_real_input(pkg_name)?;
+fn write_input_files(pkg_name: PackageName, year: usize) -> Result<(), anyhow::Error> {
+    write_real_input(pkg_name, year)?;
 
     File::create(format!("input/{pkg_name}_test.txt"))
         .context("failed to write test input file")?;
@@ -164,12 +161,8 @@ fn write_input_files(pkg_name: PackageName) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn write_real_input(pkg_name: PackageName) -> Result<(), anyhow::Error> {
+fn write_real_input(pkg_name: PackageName, year: usize) -> Result<(), anyhow::Error> {
     if let Ok(session) = std::env::var("AOC_SESSION") {
-        let year = match std::env::var("AOC_YEAR") {
-            Ok(year) => year.parse().context("failed to parse AOC_YEAR env var")?,
-            Err(_) => 2023,
-        };
         let cache_folder =
             std::env::var("AOC_CACHE").context("failed to find AOC_CACHE env var")?;
         let cache_file = format!("{cache_folder}/{year}_{day}.txt", day = pkg_name.0);
@@ -187,7 +180,7 @@ fn write_real_input(pkg_name: PackageName) -> Result<(), anyhow::Error> {
 
 fn retrieve_cached_or_fresh_input(
     pkg_name: PackageName,
-    year: i32,
+    year: usize,
     session: &str,
     cache_folder: &str,
     cache_file: &str,
@@ -211,7 +204,7 @@ fn retrieve_cached_or_fresh_input(
 
 fn retrieve_and_cache_fresh_input(
     pkg_name: PackageName,
-    year: i32,
+    year: usize,
     session: &str,
     cache_folder: &str,
     cache_file: &str,
@@ -224,7 +217,7 @@ fn retrieve_and_cache_fresh_input(
 
 fn retrieve_fresh(
     pkg_name: PackageName,
-    year: i32,
+    year: usize,
     session: &str,
 ) -> Result<String, anyhow::Error> {
     let url = format!(

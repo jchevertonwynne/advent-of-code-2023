@@ -1,7 +1,6 @@
 use std::{
     cmp::Reverse,
     fmt::{Debug, Display, Formatter},
-    mem::MaybeUninit,
 };
 
 use arrayvec::ArrayVec;
@@ -183,6 +182,13 @@ where
         self.try_collect_by_fn((|v| Reverse(v)) as for<'a> fn(&'a T) -> Reverse<&'a T>)
     }
 
+    fn try_collect_smallest<const N: usize>(self) -> Result<[T; N], CollectError>
+    where
+        T: Ord,
+    {
+        self.try_collect_by_fn((|v| v) as for<'a> fn(&'a T) -> &'a T)
+    }
+
     fn try_collect_by_fn<const N: usize, F>(self, f: F) -> Result<[T; N], CollectError>
     where
         F: for<'a> Callable<&'a T>,
@@ -200,6 +206,13 @@ where
         T: Ord,
     {
         self.collect_by_fn((|v| Reverse(v)) as for<'a> fn(&'a T) -> Reverse<&'a T>)
+    }
+
+    fn collect_smallest<const N: usize>(self) -> ArrayVec<T, N>
+    where
+        T: Ord,
+    {
+        self.collect_by_fn((|v| v) as for<'a> fn(&'a T) -> &'a T)
     }
 
     fn collect_by_fn<const N: usize, F>(self, f: F) -> ArrayVec<T, N>

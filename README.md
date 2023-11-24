@@ -29,11 +29,12 @@ For day 2 this will create the following files:
 
 Generated days are not automatically added to benchmarks
 
-`aoc` assumes that is the binary file exists then everything is already set up,
-if you delete this & rerun generation it will overwrite any of the other files
-
 ### `aoc` env vars
 
 - `AOC_SESSION` - Your session cookie - equired. You can find this on the network tab in your browser when you press f12. Optional - empty file created if not provided
 - `AOC_CACHE` - The location for the local input cache - required
-- `AOC_YEAR` - The year to retrieve - optional, defaults to 2023
+
+### `aoc` cmd line args
+
+- `-year` `-y` - year, default `2023`
+- `-overwrite` `-o` by default overwrite fails if a solution file is found, this disables that
