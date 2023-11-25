@@ -1,18 +1,14 @@
 use itertools::Itertools;
 
-use crate::{CollectN, DayResult, IntoDayResult};
+use crate::{CollectN, DayResult, IntoDayResult, Pipe};
 
 pub fn solve(input: &str) -> anyhow::Result<DayResult> {
-    let top_three = input
+    input
         .lines()
         .map(|line| line.parse::<usize>().ok())
         .batching(|it| it.while_some().sum1::<usize>())
-        .try_collect_largest::<3>()?;
-
-    let part1 = top_three[0];
-    let part2 = top_three.iter().sum::<usize>();
-
-    (part1, part2).into_result()
+        .try_collect_largest::<3>()?
+        .pipe(|top_three| (top_three[0], top_three.iter().sum::<usize>()).into_result())
 }
 
 #[cfg(test)]

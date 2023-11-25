@@ -293,6 +293,21 @@ where
     }
 }
 
+trait Pipe: Sized {
+    fn pipe<F, U>(self, f: F) -> U
+    where
+        F: Fn(Self) -> U;
+}
+
+impl<T> Pipe for T {
+    fn pipe<F, U>(self, f: F) -> U
+    where
+        F: Fn(Self) -> U,
+    {
+        f(self)
+    }
+}
+
 pub fn get_input(day: &str, is_test: bool) -> std::io::Result<String> {
     let filepath = if is_test {
         format!("input/{day}_test.txt")
