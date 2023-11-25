@@ -165,7 +165,7 @@ fn write_real_input(pkg_name: PackageName, year: usize) -> Result<(), anyhow::Er
     if let Ok(session) = std::env::var("AOC_SESSION") {
         let cache_folder =
             std::env::var("AOC_CACHE").context("failed to find AOC_CACHE env var")?;
-        let cache_file = format!("{cache_folder}/{year}_{day}.txt", day = pkg_name.0);
+        let cache_file = format!("{cache_folder}/{year}_{pkg_name}.txt");
         let input =
             retrieve_cached_or_fresh_input(pkg_name, year, &session, &cache_folder, &cache_file)?;
 
