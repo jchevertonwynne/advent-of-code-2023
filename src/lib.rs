@@ -4,6 +4,7 @@ use std::{
 };
 
 use arrayvec::ArrayVec;
+use clap::Parser;
 
 pub mod days;
 
@@ -301,6 +302,13 @@ pub fn get_input(day: &str, is_test: bool) -> std::io::Result<String> {
     std::fs::read_to_string(filepath)
 }
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+pub struct Args {
+    #[arg(short, long, default_value_t = false)]
+    pub test: bool,
+}
+
 #[macro_export]
 macro_rules! aoc_args_input_only {
     ($solver:expr, $a:tt, $b:tt) => {
@@ -318,12 +326,16 @@ macro_rules! aoc_args_both {
 #[macro_export]
 macro_rules! aoc_impl {
     ($day:tt, $solver:tt) => {
+        use clap::Parser;
+
         use $crate::days::$day::solve;
         use $crate::get_input;
+        use $crate::Args;
 
         fn main() -> anyhow::Result<()> {
+            let args = Args::parse();
             let day = stringify!($day);
-            let is_test = std::env::var_os("TEST").is_some();
+            let is_test = std::env::var_os("TEST").is_some() || args.test;
             let input = get_input(day, is_test)?;
             let solution = $solver!(solve, (&input), is_test)?;
 

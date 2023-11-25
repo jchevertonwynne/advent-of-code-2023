@@ -9,8 +9,10 @@ ascii input
 
 ## Running days
 
-`$ cargo run --bin day01` to use real input
-`$ TEST=1 cargo run --bin day01` to use test input
+- `$ cargo run --bin day01` to use real input
+- `$ TEST=1 cargo run --bin day01` OR
+- `$ cargo run --bin day01 -- -t` OR
+- `$ cargo run --bin day01 -- --test` to use test input
 
 ## `aoc` solution stub generator installation
 
