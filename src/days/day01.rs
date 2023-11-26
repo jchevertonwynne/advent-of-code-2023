@@ -8,7 +8,8 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
         .map(|line| line.parse::<usize>().ok())
         .batching(|it| it.while_some().sum1::<usize>())
         .try_collect_largest::<3>()?
-        .pipe(|top_three| (top_three[0], top_three.iter().sum::<usize>()).into_result())
+        .pipe(|top_three| (top_three[0], top_three.iter().sum::<usize>()))
+        .into_result()
 }
 
 #[cfg(test)]
