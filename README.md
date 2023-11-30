@@ -20,7 +20,8 @@ ascii input
 
 ## `aoc` usage
 
-`$ aoc 2` if installed or `$ cargo run --bin aoc 2` 
+`$ aoc 2` or `$ cargo run --bin aoc 2` to get input for a particular day 
+`$ aoc` or `$ cargo run --bin aoc` to get input for the current day of the month 
 
 For day 2 this will create the following files:
 
