@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Context};
+use chrono::{Datelike, Utc};
 use clap::Parser;
 use nom::{
     bytes::complete::tag,
@@ -19,6 +20,7 @@ use std::{
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
+    #[arg(default_value_t = Utc::now().day() as u8)]
     day: u8,
     #[arg(short, long, default_value_t = 2023)]
     year: usize,
