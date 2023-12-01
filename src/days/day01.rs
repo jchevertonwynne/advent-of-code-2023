@@ -31,8 +31,14 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
             "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
         ];
         let first_indices = NUMS.map(|n| line.as_bytes().find_substring(n));
-        let last_indices: [_; 9] =
-            std::array::from_fn(|i| first_indices[i].and_then(|_| line.as_bytes().rfind(NUMS[i])));
+        let last_indices: [_; 9] = std::array::from_fn(|i| {
+            first_indices[i].and_then(|_| {
+                last.map(|(_, i)| i + 3 < line.len())
+                    .unwrap_or(true)
+                    .then(|| line.as_bytes().rfind(NUMS[i]))
+                    .flatten()
+            })
+        });
 
         let (first, last) =
             itertools::izip!(first_indices.into_iter(), last_indices.into_iter(), 1..).fold(
