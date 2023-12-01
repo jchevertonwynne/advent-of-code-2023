@@ -172,6 +172,22 @@ impl Display for DayResult {
     }
 }
 
+trait TryConvert {
+    type Into;
+    fn try_convert(self) -> Result<Self::Into, CollectError>;
+}
+
+impl<T, const N: usize> TryConvert for ArrayVec<T, N> {
+    type Into = [T; N];
+
+    fn try_convert(self) -> Result<Self::Into, CollectError> {
+        self.into_inner().map_err(|arr| CollectError {
+            expected: N,
+            actual: arr.len(),
+        })
+    }
+}
+
 trait CollectN<T>
 where
     Self: Sized,
@@ -180,26 +196,21 @@ where
     where
         T: Ord,
     {
-        self.try_collect_by_fn((|v| Reverse(v)) as for<'a> fn(&'a T) -> Reverse<&'a T>)
+        self.collect_smallest().try_convert()
     }
 
     fn try_collect_smallest<const N: usize>(self) -> Result<[T; N], CollectError>
     where
         T: Ord,
     {
-        self.try_collect_by_fn((|v| v) as for<'a> fn(&'a T) -> &'a T)
+        self.collect_largest().try_convert()
     }
 
     fn try_collect_by_fn<const N: usize, F>(self, f: F) -> Result<[T; N], CollectError>
     where
         F: for<'a> Callable<&'a T>,
     {
-        self.collect_by_fn(f)
-            .into_inner()
-            .map_err(|arr| CollectError {
-                expected: N,
-                actual: arr.len(),
-            })
+        self.collect_by_fn(f).try_convert()
     }
 
     fn collect_largest<const N: usize>(self) -> ArrayVec<T, N>

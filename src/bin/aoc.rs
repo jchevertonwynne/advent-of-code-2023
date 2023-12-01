@@ -17,17 +17,6 @@ use std::{
     io::{ErrorKind, Write},
 };
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    #[arg(default_value_t = Utc::now().day() as u8)]
-    day: u8,
-    #[arg(short, long, default_value_t = 2023)]
-    year: usize,
-    #[arg(short, long, default_value_t = false)]
-    overwrite: bool,
-}
-
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     setup_tracing()?;
@@ -38,6 +27,17 @@ fn main() -> anyhow::Result<()> {
     write_solver_file(pkg_name).context("could not write solver file")?;
     write_input_files(pkg_name, args.year).context("could not write input files")?;
     Ok(())
+}
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(default_value_t = Utc::now().day())]
+    day: u32,
+    #[arg(short, long, default_value_t = 2023)]
+    year: usize,
+    #[arg(short, long, default_value_t = false)]
+    overwrite: bool,
 }
 
 fn setup_tracing() -> Result<(), anyhow::Error> {
@@ -59,7 +59,7 @@ fn ensure_in_aoc_repository() -> Result<(), anyhow::Error> {
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-struct PackageName(u8);
+struct PackageName(u32);
 
 impl Display for PackageName {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -71,7 +71,7 @@ fn parse_mod_line(input: &str) -> IResult<&str, PackageName> {
     all_consuming(delimited(
         tag("pub mod "),
         map(
-            preceded(tag("day"), nom::character::complete::u8),
+            preceded(tag("day"), nom::character::complete::u32),
             PackageName,
         ),
         tag(";"),
