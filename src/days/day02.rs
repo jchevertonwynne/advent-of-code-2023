@@ -1,47 +1,45 @@
 use std::cmp::max;
 
-use nom::{
-    branch::alt,
-    bytes::complete::tag,
-    character::complete::u32 as parse_u32,
-    combinator::map,
-    sequence::{delimited, tuple},
-    IResult,
-};
+use nom::character::complete::u32 as parse_u32;
 
 use crate::{DayResult, IntoDayResult};
-
-use Colour::*;
 
 pub fn solve(mut input: &str) -> anyhow::Result<DayResult> {
     let mut p1 = 0;
     let mut p2 = 0;
 
     while !input.is_empty() {
-        let (_input, id) = parse_id(input).map_err(|err| anyhow::anyhow!("{err}"))?;
-        input = _input;
+        input = &input[5..];
+        let (_input, id) = parse_u32::<_, nom::error::Error<&str>>(input)
+            .map_err(|err| anyhow::anyhow!("{err}"))?;
+        input = &_input[2..];
 
         let mut few_enough = true;
-        let mut colours = Colours::default();
+        let mut red = 0;
+        let mut green = 0;
+        let mut blue = 0;
 
         loop {
-            let (_input, (count, colour)) =
-                parse_beads(input).map_err(|err| anyhow::anyhow!("{err}"))?;
+            let (_input, count) = parse_u32::<_, nom::error::Error<&str>>(input)
+                .map_err(|err| anyhow::anyhow!("{err}"))?;
             input = _input;
-
-            match colour {
-                Red => {
+            match input.as_bytes()[1] {
+                b'r' => {
+                    input = &input[4..];
                     few_enough &= count <= 12;
-                    colours.red = max(colours.red, count);
+                    red = max(red, count);
                 }
-                Green => {
+                b'g' => {
+                    input = &input[6..];
                     few_enough &= count <= 13;
-                    colours.green = max(colours.green, count);
+                    green = max(green, count);
                 }
-                Blue => {
+                b'b' => {
+                    input = &input[5..];
                     few_enough &= count <= 14;
-                    colours.blue = max(colours.blue, count);
+                    blue = max(blue, count);
                 }
+                _ => unreachable!(),
             }
 
             if input.as_bytes()[0] == b'\n' {
@@ -56,50 +54,10 @@ pub fn solve(mut input: &str) -> anyhow::Result<DayResult> {
             p1 += id;
         }
 
-        p2 += colours.power();
+        p2 += red * green * blue;
     }
 
     (p1, p2).into_result()
-}
-
-#[derive(Debug, Default)]
-struct Colours {
-    red: u32,
-    green: u32,
-    blue: u32,
-}
-
-impl Colours {
-    fn power(self) -> u32 {
-        let Colours { red, green, blue } = self;
-        red * green * blue
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum Colour {
-    Red,
-    Green,
-    Blue,
-}
-
-fn parse_id(input: &str) -> IResult<&str, u32> {
-    delimited(tag("Game "), parse_u32, tag(": "))(input)
-}
-
-fn parse_beads(input: &str) -> IResult<&str, (u32, Colour)> {
-    map(
-        tuple((parse_u32, nom::bytes::complete::tag(" "), parse_colour)),
-        |(count, _, colour)| (count, colour),
-    )(input)
-}
-
-fn parse_colour(input: &str) -> IResult<&str, Colour> {
-    alt((
-        map(tag("red"), |_| Colour::Red),
-        map(tag("green"), |_| Colour::Green),
-        map(tag("blue"), |_| Colour::Blue),
-    ))(input)
 }
 
 #[cfg(test)]
