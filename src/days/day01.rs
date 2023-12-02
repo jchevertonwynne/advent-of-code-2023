@@ -8,8 +8,8 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
     let mut p2 = 0;
 
     for line in input.as_bytes().lines() {
-        let (p1f, p2f) = first_omni::<StateForward>(line);
-        let (p1b, p2b) = first_omni::<StateBackward>(line);
+        let (p1f, p2f) = first_bidirectional::<StateForward>(line);
+        let (p1b, p2b) = first_bidirectional::<StateBackward>(line);
         let num1 = p1f * 10 + p1b;
         let num2 = p2f * 10 + p2b;
         p1 += num1;
@@ -19,7 +19,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
     (p1, p2).into_result()
 }
 
-fn first_omni<F>(mut line: &[u8]) -> (usize, usize)
+fn first_bidirectional<F>(mut line: &[u8]) -> (usize, usize)
 where
     F: Feedable,
 {
@@ -29,14 +29,15 @@ where
     let mut p1 = 0;
     let mut p2 = 0;
 
-    let mut a1: ArrayVec<F, 9> = ArrayVec::from_iter([F::init()]);
+    // i like to think we'll not have more than 2
+    let mut a1: ArrayVec<F, 2> = ArrayVec::from_iter([F::init()]);
 
     while !line.is_empty() {
         let (b, _line) = F::incr(line);
         line = _line;
 
         match b {
-            b @ b'1'..=b'9' => {
+            b'1'..=b'9' => {
                 a1 = ArrayVec::from_iter([F::init()]);
 
                 let num = (b - b'0') as usize;
@@ -47,7 +48,7 @@ where
                     found_p2 = true;
                 }
             }
-            b => {
+            _ => {
                 if found_p2 {
                     continue;
                 }
@@ -102,7 +103,6 @@ impl Feedable for StateForward {
 
     fn feed(self, b: u8) -> FeedResult<StateForward> {
         match self.0 {
-            // first layer
             0 => match b {
                 b'o' => FeedResult::Completeable(1, b"ne"),
                 b't' => FeedResult::One(StateForward(2)),
@@ -112,7 +112,6 @@ impl Feedable for StateForward {
                 b'n' => FeedResult::Completeable(9, b"ine"),
                 _ => FeedResult::None,
             },
-            // second layer
             1 => match b {
                 b'n' => FeedResult::One(StateForward(7)),
                 _ => FeedResult::None,
@@ -155,7 +154,6 @@ impl Feedable for StateBackward {
 
     fn feed(self, b: u8) -> FeedResult<StateBackward> {
         match self.0 {
-            // first layer
             0 => match b {
                 b'e' => FeedResult::One(StateBackward(1)),
                 b'o' => FeedResult::Completeable(2, b"tw"),
@@ -165,7 +163,6 @@ impl Feedable for StateBackward {
                 b't' => FeedResult::Completeable(8, b"eigh"),
                 _ => FeedResult::None,
             },
-            // second layer
             1 => match b {
                 b'v' => FeedResult::Completeable(5, b"fi"),
                 b'n' => FeedResult::One(StateBackward(2)),
