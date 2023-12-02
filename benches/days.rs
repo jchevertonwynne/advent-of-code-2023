@@ -2,7 +2,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 fn criterion_benchmark(c: &mut Criterion) {
     macro_rules! bench_day {
-        ($day:tt) => {
+        ($day:tt) => {{
             const INPUT: &str = include_str!(concat!("../input/", stringify!($day), ".txt"));
             c.bench_function(stringify!($day), |b| {
                 b.iter(|| advent_of_code_2023::days::$day::solve(black_box(INPUT)))
@@ -12,7 +12,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             c.bench_function(concat!(stringify!($day), " test"), |b| {
                 b.iter(|| advent_of_code_2023::days::$day::solve(black_box(INPUT_TEST)))
             });
-        };
+        }};
         ($day:expr, is_test) => {{
             const INPUT: &str = include_str!(concat!("../input/", stringify!($day), ".txt"));
             c.bench_function(stringify!($day), |b| {
@@ -27,6 +27,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     }
 
     bench_day!(day01);
+    bench_day!(day02);
 }
 
 criterion_group!(benches, criterion_benchmark);
