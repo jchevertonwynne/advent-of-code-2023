@@ -5,7 +5,6 @@ use nom::{
     bytes::complete::tag,
     character::complete::u32 as parse_u32,
     combinator::map,
-    multi::separated_list1,
     sequence::{delimited, tuple},
     IResult,
 };
@@ -19,31 +18,43 @@ pub fn solve(mut input: &str) -> anyhow::Result<DayResult> {
     let mut p2 = 0;
 
     while !input.is_empty() {
-        let (_input, (id, blocks)) = parse_day(input).map_err(|err| anyhow::anyhow!("{err}"))?;
+        let (_input, id) = parse_id(input).map_err(|err| anyhow::anyhow!("{err}"))?;
         input = _input;
 
-        let few_enough = blocks.iter().all(|block| {
-            block.iter().all(|&(count, colour)| match colour {
-                Red => count <= 12,
-                Green => count <= 13,
-                Blue => count <= 14,
-            })
-        });
+        let mut few_enough = true;
+        let mut colours = Colours::default();
+
+        loop {
+            let (_input, (count, colour)) =
+                parse_beads(input).map_err(|err| anyhow::anyhow!("{err}"))?;
+            input = _input;
+
+            match colour {
+                Red => {
+                    few_enough &= count <= 12;
+                    colours.red = max(colours.red, count);
+                }
+                Green => {
+                    few_enough &= count <= 13;
+                    colours.green = max(colours.green, count);
+                }
+                Blue => {
+                    few_enough &= count <= 14;
+                    colours.blue = max(colours.blue, count);
+                }
+            }
+
+            if input.as_bytes()[0] == b'\n' {
+                input = &input[1..];
+                break;
+            } else {
+                input = &input[2..];
+            }
+        }
 
         if few_enough {
             p1 += id;
         }
-
-        let colours = blocks.into_iter().fold(Colours::default(), |c, block| {
-            block.into_iter().fold(c, |mut c, (count, colour)| {
-                match colour {
-                    Red => c.red = max(c.red, count),
-                    Green => c.green = max(c.green, count),
-                    Blue => c.blue = max(c.blue, count),
-                };
-                c
-            })
-        });
 
         p2 += colours.power();
     }
@@ -72,21 +83,8 @@ enum Colour {
     Blue,
 }
 
-type ColourCount = (u32, Colour);
-
-fn parse_day(input: &str) -> IResult<&str, (u32, Vec<Vec<ColourCount>>)> {
-    map(
-        nom::sequence::tuple((parse_id, separated_list1(tag("; "), parse_block), tag("\n"))),
-        |(id, blocks, _)| (id, blocks),
-    )(input)
-}
-
 fn parse_id(input: &str) -> IResult<&str, u32> {
     delimited(tag("Game "), parse_u32, tag(": "))(input)
-}
-
-fn parse_block(input: &str) -> IResult<&str, Vec<(u32, Colour)>> {
-    separated_list1(tag(", "), parse_beads)(input)
 }
 
 fn parse_beads(input: &str) -> IResult<&str, (u32, Colour)> {
