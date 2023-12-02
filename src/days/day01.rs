@@ -105,28 +105,24 @@ impl Feedable for StateForward {
         match self.0 {
             0 => match b {
                 b'o' => FeedResult::Completeable(1, b"ne"),
-                b't' => FeedResult::One(StateForward(2)),
-                b'f' => FeedResult::One(StateForward(3)),
-                b's' => FeedResult::One(StateForward(4)),
+                b't' => FeedResult::One(StateForward(1)),
+                b'f' => FeedResult::One(StateForward(2)),
+                b's' => FeedResult::One(StateForward(3)),
                 b'e' => FeedResult::Completeable(8, b"ight"),
                 b'n' => FeedResult::Completeable(9, b"ine"),
                 _ => FeedResult::None,
             },
             1 => match b {
-                b'n' => FeedResult::One(StateForward(7)),
-                _ => FeedResult::None,
-            },
-            2 => match b {
                 b'w' => FeedResult::Completeable(2, b"o"),
                 b'h' => FeedResult::Completeable(3, b"ree"),
                 _ => FeedResult::None,
             },
-            3 => match b {
+            2 => match b {
                 b'o' => FeedResult::Completeable(4, b"ur"),
                 b'i' => FeedResult::Completeable(5, b"ve"),
                 _ => FeedResult::None,
             },
-            4 => match b {
+            3 => match b {
                 b'i' => FeedResult::Completeable(6, b"x"),
                 b'e' => FeedResult::Completeable(7, b"ven"),
                 _ => FeedResult::None,
