@@ -7,14 +7,45 @@ use fxhash::FxBuildHasher;
 use crate::{DayResult, IntoDayResult};
 
 macro_rules! update {
-    ($building_number:ident, $found_symbol:ident, $numbers:ident, $number:ident, $number_count:ident, $p1:ident) => {
-        if $building_number && $found_symbol {
-            $p1 += $number;
-            $numbers.insert($number_count, $number);
+    ($building_number:ident, $x:ident, $y:ident, $num_start:ident, $num_end:ident, $number:ident, $input:ident, $asterisks:ident, $width:ident, $p1:ident) => {
+        if $building_number {
+            let mut found_symbol = false;
+            for ny in $y.checked_sub(1).unwrap_or($y)..($y + 2) {
+                for nx in $num_start.checked_sub(1).unwrap_or($num_start)..($num_end + 2) {
+                    if ny == $y && nx >= $num_start && nx <= $num_end {
+                        continue;
+                    }
+
+                    let Some(&t) = $input.get(nx + ny * ($width + 1)) else {
+                        continue;
+                    };
+                    if t == b'\n' || t == b'.' || t.is_ascii_digit() {
+                        continue;
+                    }
+
+                    if t == b'*' {
+                        let ids = $asterisks
+                            .entry(nx + ny * $width)
+                            .or_insert(ArrayVec::<Number, 2>::new());
+                        let num = Number {
+                            $num_start,
+                            $num_end,
+                            $number,
+                        };
+                        if !ids.contains(&num) {
+                            ids.push(num);
+                        }
+                    }
+
+                    found_symbol = true;
+                }
+            }
+            if found_symbol {
+                $p1 += $number;
+            }
         }
         $number = 0;
         $building_number = false;
-        $found_symbol = false;
     };
 }
 
@@ -28,11 +59,10 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
         .position(|&b| b == b'\n')
         .context("expected a newline")?;
 
+    let mut num_start = 0;
+    let mut num_end = 0;
     let mut building_number = false;
-    let mut found_symbol = false;
     let mut number = 0;
-    let mut number_count = 0;
-    let mut numbers = HashMap::with_hasher(FxBuildHasher::default());
     let mut asterisks = HashMap::with_hasher(FxBuildHasher::default());
 
     for y in 0..(input.len() / (width + 1)) {
@@ -42,54 +72,23 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
                 .context("this should be a known legal coord")?;
 
             if b.is_ascii_digit() {
-                number_count += 1 & (!building_number) as usize;
+                if !building_number {
+                    num_start = x;
+                }
                 building_number = true;
                 number = number * 10 + (b - b'0') as usize;
-
-                const DIRS: [(isize, isize); 8] = [
-                    (-1, -1),
-                    (-1, 0),
-                    (-1, 1),
-                    (0, -1),
-                    (0, 1),
-                    (1, -1),
-                    (1, 0),
-                    (1, 1),
-                ];
-
-                for (i, j) in DIRS {
-                    let Ok(nx) = usize::try_from((x as isize) + i) else {
-                        continue;
-                    };
-                    let Ok(ny) = usize::try_from((y as isize) + j) else {
-                        continue;
-                    };
-
-                    let Some(&t) = input.get(nx + ny * (width + 1)) else {
-                        continue;
-                    };
-                    if t == b'\n' || t == b'.' || t.is_ascii_digit() {
-                        continue;
-                    }
-
-                    if t == b'*' {
-                        let ids = asterisks
-                            .entry(nx + ny * width)
-                            .or_insert(ArrayVec::<_, 2>::new());
-                        if !ids.contains(&number_count) {
-                            ids.push(number_count);
-                        }
-                    }
-
-                    found_symbol = true;
-                }
+                num_end = x;
             } else {
                 update!(
                     building_number,
-                    found_symbol,
-                    numbers,
+                    x,
+                    y,
+                    num_start,
+                    num_end,
                     number,
-                    number_count,
+                    input,
+                    asterisks,
+                    width,
                     p1
                 );
             }
@@ -97,10 +96,14 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
 
         update!(
             building_number,
-            found_symbol,
-            numbers,
+            x,
+            y,
+            num_start,
+            num_end,
             number,
-            number_count,
+            input,
+            asterisks,
+            width,
             p1
         );
     }
@@ -111,13 +114,20 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
             (number_counts.len() == 2).then(|| {
                 number_counts
                     .into_iter()
-                    .flat_map(|count| numbers.get(&count))
+                    .map(|n| n.number)
                     .product::<usize>()
             })
         })
         .sum::<usize>();
 
     (p1, p2).into_result()
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct Number {
+    num_start: usize,
+    num_end: usize,
+    number: usize,
 }
 
 #[cfg(test)]
