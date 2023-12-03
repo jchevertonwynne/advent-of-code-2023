@@ -65,12 +65,13 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
 
     let p2 = asterisks
         .into_iter()
-        .filter(|(_, numbers)| numbers.len() == 2)
-        .map(|(_, number_counts)| {
-            number_counts
-                .into_iter()
-                .flat_map(|count| numbers.get(&count))
-                .product::<usize>()
+        .filter_map(|(_, number_counts)| {
+            (number_counts.len() == 2).then(|| {
+                number_counts
+                    .into_iter()
+                    .flat_map(|count| numbers.get(&count))
+                    .product::<usize>()
+            })
         })
         .sum::<usize>();
 
