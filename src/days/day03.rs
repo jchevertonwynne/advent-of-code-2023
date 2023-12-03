@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use anyhow::Context;
 use arrayvec::ArrayVec;
 use fxhash::FxBuildHasher;
-use itertools::Itertools;
 
 use crate::{DayResult, IntoDayResult};
 
@@ -20,18 +19,14 @@ macro_rules! update {
 }
 
 pub fn solve(input: &str) -> anyhow::Result<DayResult> {
+    let input = input.as_bytes();
+
     let mut p1 = 0;
 
     let width = input
-        .as_bytes()
         .iter()
         .position(|&b| b == b'\n')
         .context("expected a newline")?;
-
-    let world = World {
-        src: input.as_bytes(),
-        width,
-    };
 
     let mut building_number = false;
     let mut found_symbol = false;
@@ -42,22 +37,41 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
 
     for y in 0..(input.len() / (width + 1)) {
         for x in 0..width {
-            let b = world.get(x, y).context("this is a known legal coord")?;
+            let &b = input
+                .get(x + y * (width + 1))
+                .context("this should be a known legal coord")?;
+
             if b.is_ascii_digit() {
                 number_count += 1 & (!building_number) as usize;
                 building_number = true;
                 number = number * 10 + (b - b'0') as usize;
-                for (i, j) in (-1_isize..=1).cartesian_product(-1_isize..=1) {
+
+                const DIRS: [(isize, isize); 8] = [
+                    (-1, -1),
+                    (-1, 0),
+                    (-1, 1),
+                    (0, -1),
+                    (0, 1),
+                    (1, -1),
+                    (1, 0),
+                    (1, 1),
+                ];
+
+                for (i, j) in DIRS {
                     let Ok(nx) = usize::try_from((x as isize) + i) else {
                         continue;
                     };
                     let Ok(ny) = usize::try_from((y as isize) + j) else {
                         continue;
                     };
-                    let Some(t) = world.get(nx, ny) else { continue };
-                    if t == b'.' || t.is_ascii_digit() {
+
+                    let Some(&t) = input.get(nx + ny * (width + 1)) else {
+                        continue;
+                    };
+                    if t == b'\n' || t == b'.' || t.is_ascii_digit() {
                         continue;
                     }
+
                     if t == b'*' {
                         let ids = asterisks
                             .entry(nx + ny * width)
@@ -66,6 +80,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
                             ids.push(number_count);
                         }
                     }
+
                     found_symbol = true;
                 }
             } else {
@@ -79,6 +94,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
                 );
             }
         }
+
         update!(
             building_number,
             found_symbol,
@@ -102,20 +118,6 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
         .sum::<usize>();
 
     (p1, p2).into_result()
-}
-
-struct World<'a> {
-    src: &'a [u8],
-    width: usize,
-}
-
-impl<'a> World<'a> {
-    fn get(&self, w: usize, h: usize) -> Option<u8> {
-        self.src
-            .get(w + h * (self.width + 1))
-            .cloned()
-            .filter(|&b| b != b'\n')
-    }
 }
 
 #[cfg(test)]
