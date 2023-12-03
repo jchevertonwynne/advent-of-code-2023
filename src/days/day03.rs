@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use anyhow::Context;
 use arrayvec::ArrayVec;
-use fxhash::FxBuildHasher;
+use fxhash::FxHashMap;
 
 use crate::{DayResult, IntoDayResult};
 
@@ -63,7 +61,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
     let mut num_end = 0;
     let mut building_number = false;
     let mut number = 0;
-    let mut asterisks = HashMap::with_hasher(FxBuildHasher::default());
+    let mut asterisks = FxHashMap::default();
 
     for y in 0..(input.len() / (width + 1)) {
         for x in 0..width {
