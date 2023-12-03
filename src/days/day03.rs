@@ -5,6 +5,18 @@ use itertools::Itertools;
 
 use crate::{DayResult, IntoDayResult};
 
+macro_rules! update {
+    ($building_number:ident, $found_symbol:ident, $numbers:ident, $number:ident, $number_count:ident, $p1:ident) => {
+        if $building_number && $found_symbol {
+            $p1 += $number;
+            $numbers.insert($number_count, $number);
+        }
+        $number = 0;
+        $building_number = false;
+        $found_symbol = false;
+    };
+}
+
 pub fn solve(input: &str) -> anyhow::Result<DayResult> {
     let mut p1 = 0;
 
@@ -45,22 +57,24 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
                     }
                 }
             } else {
-                if building_number && found_symbol {
-                    p1 += number;
-                    numbers.insert(number_count, number);
-                }
-                number = 0;
-                building_number = false;
-                found_symbol = false;
+                update!(
+                    building_number,
+                    found_symbol,
+                    numbers,
+                    number,
+                    number_count,
+                    p1
+                );
             }
         }
-        if building_number && found_symbol {
-            p1 += number;
-            numbers.insert(number_count, number);
-        }
-        number = 0;
-        building_number = false;
-        found_symbol = false;
+        update!(
+            building_number,
+            found_symbol,
+            numbers,
+            number,
+            number_count,
+            p1
+        );
     }
 
     let p2 = asterisks
