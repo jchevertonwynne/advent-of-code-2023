@@ -1,5 +1,4 @@
 use bstr::ByteSlice;
-use fxhash::{FxHashMap, FxHashSet};
 
 use crate::{DayResult, IntoDayResult};
 
@@ -7,10 +6,9 @@ pub fn solve(input: &str, is_test: bool) -> anyhow::Result<DayResult> {
     let mut p1 = 0;
 
     let mut all_cards = vec![];
+    let mut winners = vec![];
 
-    let mut winners = FxHashSet::default();
-
-    for (line, card_id) in input.as_bytes().lines().zip(1..) {
+    for line in input.as_bytes().lines() {
         winners.clear();
 
         let mut line = &line[if is_test { 8 } else { 10 }..];
@@ -22,10 +20,10 @@ pub fn solve(input: &str, is_test: bool) -> anyhow::Result<DayResult> {
             let (_line, n) = nom::character::complete::u32::<_, nom::error::Error<&[u8]>>(line)
                 .map_err(|err| anyhow::anyhow!("{err}"))?;
             line = _line;
-            winners.insert(n);
+            winners.push(n);
         }
 
-        line = &line[2..];
+        line = &line[3..];
 
         let mut matches = 0;
         while !line.is_empty() {
@@ -37,32 +35,20 @@ pub fn solve(input: &str, is_test: bool) -> anyhow::Result<DayResult> {
             line = _line;
             matches += winners.contains(&n) as i32;
         }
-        if matches != 0 {
-            p1 += 1 << (matches - 1);
+        p1 += (1 << matches) >> 1;
+
+        all_cards.push((1, matches));
+    }
+
+    let mut all_cards_slice = all_cards.as_mut_slice();
+    while let [(count, matches), _all_cards_slice @ ..] = all_cards_slice {
+        all_cards_slice = _all_cards_slice;
+        for i in 0..*matches {
+            all_cards_slice[i as usize].0 += *count;
         }
-
-        all_cards.push((card_id, matches));
     }
 
-    let mut to_do = FxHashMap::default();
-
-    let mut p2 = 0;
-    for &(card_id, matches) in all_cards.iter() {
-        to_do.insert(card_id, (1, matches));
-    }
-    let mut to_do_swap = FxHashMap::with_capacity_and_hasher(to_do.len(), Default::default());
-    while !to_do.is_empty() {
-        for (card_id, (count, matches)) in to_do.drain() {
-            p2 += count;
-
-            for i in 0..matches {
-                let new_card = card_id + i as u32 + 1;
-                let new_matches = all_cards[new_card as usize - 1].1;
-                to_do_swap.entry(new_card).or_insert((0, new_matches)).0 += count;
-            }
-        }
-        std::mem::swap(&mut to_do, &mut to_do_swap);
-    }
+    let p2 = all_cards.into_iter().map(|(count, _)| count).sum::<i32>();
 
     (p1, p2).into_result()
 }
