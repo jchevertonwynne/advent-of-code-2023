@@ -12,7 +12,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
     let p1: usize = times
         .iter()
         .zip(distances.iter())
-        .map(|(&t, &d)| race(t, d))
+        .map(|(&time, &dist)| race(time, dist))
         .product();
 
     let bigger_time = combine_numbers(&times);
@@ -35,7 +35,23 @@ fn combine_numbers(nums: &[u64]) -> u64 {
 }
 
 fn race(time: u64, distance: u64) -> usize {
-    (0..time + 1).filter(|t| t * (time - t) > distance).count()
+    let time = time as f64;
+    let distance = distance as f64;
+    let inner = ((time * time) - (4.0 * distance)).sqrt();
+    let higher = (time + inner) / 2.0;
+    let lower = (time - inner) / 2.0;
+    let higher = if higher % 1.0 == 0.0 {
+        higher - 1.0
+    } else {
+        higher
+    };
+    let lower = if lower % 1.0 == 0.0 {
+        lower + 1.0
+    } else {
+        lower
+    };
+
+    higher.floor() as usize - lower.ceil() as usize + 1
 }
 
 fn parse_numbers(mut input: &[u8]) -> Result<(&[u8], ArrayVec<u64, 4>), ParseIntError> {
