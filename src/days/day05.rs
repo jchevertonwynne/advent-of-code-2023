@@ -50,6 +50,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
 
     (p1, p2).into_result()
 }
+
 fn solve_p2(seeds: &[u64], block_maps: &[BlockMap]) -> Option<u64> {
     seeds
         .iter()
@@ -94,6 +95,9 @@ fn solve_p2_2(block_maps: &[BlockMap], min: u64, max: u64) -> Option<u64> {
 
         for m in &bm.mappings {
             let start = m.src_start;
+            if start > max {
+                break;
+            }
             let end = m.src_start + m.width;
             let clamped_min = std::cmp::max(min, start);
             let clamped_max = std::cmp::min(max, end);
@@ -113,6 +117,9 @@ fn solve_p2_2(block_maps: &[BlockMap], min: u64, max: u64) -> Option<u64> {
 
         for (a, b) in bm.mappings.iter().tuple_windows() {
             let start = a.src_start + a.width;
+            if start > max {
+                break;
+            }
             let end = b.src_start;
             let new_min = std::cmp::max(min, start);
             let new_max = std::cmp::min(max, end);
