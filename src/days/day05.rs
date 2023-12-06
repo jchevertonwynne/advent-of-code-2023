@@ -68,13 +68,11 @@ fn solve_p2_2(block_maps: &[BlockMap], min: u64, max: u64) -> Option<u64> {
         let clamped_min = min;
         let clamped_max = std::cmp::min(max, fmap.src_start);
         if clamped_min < clamped_max {
-            let nres = solve_p2_2(rest, clamped_min, clamped_max);
-            res = match res {
-                Some(a) => match nres {
-                    Some(b) => Some(std::cmp::min(a, b)),
-                    None => Some(a),
-                },
-                None => nres,
+            if let Some(new_res) = solve_p2_2(rest, clamped_min, clamped_max) {
+                res = match res {
+                    Some(res) => Some(std::cmp::min(res, new_res)),
+                    None => Some(new_res),
+                }
             }
         }
 
@@ -83,13 +81,11 @@ fn solve_p2_2(block_maps: &[BlockMap], min: u64, max: u64) -> Option<u64> {
         let clamped_min = std::cmp::max(min, lmin);
         let clamped_max = max;
         if clamped_min < clamped_max {
-            let nres = solve_p2_2(rest, clamped_min, clamped_max);
-            res = match res {
-                Some(a) => match nres {
-                    Some(b) => Some(std::cmp::min(a, b)),
-                    None => Some(a),
-                },
-                None => nres,
+            if let Some(new_res) = solve_p2_2(rest, clamped_min, clamped_max) {
+                res = match res {
+                    Some(res) => Some(std::cmp::min(res, new_res)),
+                    None => Some(new_res),
+                }
             }
         }
 
@@ -104,13 +100,11 @@ fn solve_p2_2(block_maps: &[BlockMap], min: u64, max: u64) -> Option<u64> {
             if clamped_min < clamped_max {
                 let new_min = clamped_min - m.src_start + m.dst_start;
                 let new_max = clamped_max - m.src_start + m.dst_start;
-                let nres = solve_p2_2(rest, new_min, new_max);
-                res = match res {
-                    Some(a) => match nres {
-                        Some(b) => Some(std::cmp::min(a, b)),
-                        None => Some(a),
-                    },
-                    None => nres,
+                if let Some(new_res) = solve_p2_2(rest, new_min, new_max) {
+                    res = match res {
+                        Some(res) => Some(std::cmp::min(res, new_res)),
+                        None => Some(new_res),
+                    }
                 }
             }
         }
@@ -124,13 +118,11 @@ fn solve_p2_2(block_maps: &[BlockMap], min: u64, max: u64) -> Option<u64> {
             let new_min = std::cmp::max(min, start);
             let new_max = std::cmp::min(max, end);
             if new_min < new_max {
-                let nres = solve_p2_2(rest, new_min, new_max);
-                res = match res {
-                    Some(a) => match nres {
-                        Some(b) => Some(std::cmp::min(a, b)),
-                        None => Some(a),
-                    },
-                    None => nres,
+                if let Some(new_res) = solve_p2_2(rest, new_min, new_max) {
+                    res = match res {
+                        Some(res) => Some(std::cmp::min(res, new_res)),
+                        None => Some(new_res),
+                    }
                 }
             }
         }
