@@ -4,13 +4,15 @@ use nom::character::complete::u32 as parse_u32;
 
 use crate::{DayResult, IntoDayResult};
 
-pub fn solve(mut input: &str) -> anyhow::Result<DayResult> {
+pub fn solve(input: &str) -> anyhow::Result<DayResult> {
     let mut p1 = 0;
     let mut p2 = 0;
 
+    let mut input = input.as_bytes();
+
     while !input.is_empty() {
         input = &input[5..];
-        let (_input, id) = parse_u32::<_, nom::error::Error<&str>>(input)
+        let (_input, id) = parse_u32::<_, nom::error::Error<&[u8]>>(input)
             .map_err(|err| anyhow::anyhow!("{err}"))?;
         input = &_input[2..];
 
@@ -20,10 +22,10 @@ pub fn solve(mut input: &str) -> anyhow::Result<DayResult> {
         let mut blue = 0;
 
         loop {
-            let (_input, count) = parse_u32::<_, nom::error::Error<&str>>(input)
+            let (_input, count) = parse_u32::<_, nom::error::Error<&[u8]>>(input)
                 .map_err(|err| anyhow::anyhow!("{err}"))?;
             input = _input;
-            match input.as_bytes()[1] {
+            match input[1] {
                 b'r' => {
                     input = &input[4..];
                     few_enough &= count <= 12;
@@ -42,7 +44,7 @@ pub fn solve(mut input: &str) -> anyhow::Result<DayResult> {
                 _ => unreachable!(),
             }
 
-            if input.as_bytes()[0] == b'\n' {
+            if input[0] == b'\n' {
                 input = &input[1..];
                 break;
             } else {

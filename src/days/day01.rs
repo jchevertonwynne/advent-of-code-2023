@@ -136,7 +136,10 @@ impl Feedable for StateForward {
     }
 
     fn incr(line: &[u8]) -> (u8, &[u8]) {
-        (line[0], &line[1..])
+        let [first, rest @ ..] = line else {
+            unreachable!("caller should ensure this doesnt happen");
+        };
+        (*first, rest)
     }
 }
 
@@ -179,7 +182,10 @@ impl Feedable for StateBackward {
     }
 
     fn incr(line: &[u8]) -> (u8, &[u8]) {
-        (line[line.len() - 1], &line[..line.len() - 1])
+        let [rest @ .., last] = line else {
+            unreachable!("caller should ensure this doesnt happen");
+        };
+        (*last, rest)
     }
 }
 

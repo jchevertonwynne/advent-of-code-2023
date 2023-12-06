@@ -1,6 +1,8 @@
+use std::cmp::{max, min};
+
 use anyhow::Context;
 use itertools::Itertools;
-use nom::{bytes::complete::tag, combinator::map, multi::separated_list1, sequence::tuple};
+use nom::bytes::complete::tag;
 
 use crate::{DayResult, IntoDayResult};
 
@@ -12,32 +14,41 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
     )(input)
     .map_err(|err| anyhow::anyhow!("{err}"))?;
 
+    let mut entries = vec![];
+
     let mut block_maps = arrayvec::ArrayVec::<BlockMap, 7>::new();
-
     let input = &input["seed-to-soil-map:".len() + 3..];
-    let (input, mapping) = parse_block_map(input).map_err(|err| anyhow::anyhow!("{err}"))?;
+    let (input, mapping) = parse_block_map_2(input, &mut entries);
     block_maps.push(mapping);
-    let input = &input["soil-to-fertilizer map:".len() + 3..];
-    let (input, mapping) = parse_block_map(input).map_err(|err| anyhow::anyhow!("{err}"))?;
+    let input = &input["soil-to-fertilizer map:".len() + 1..];
+    let (input, mapping) = parse_block_map_2(input, &mut entries);
     block_maps.push(mapping);
-    let input = &input["fertilizer-to-water map:".len() + 3..];
-    let (input, mapping) = parse_block_map(input).map_err(|err| anyhow::anyhow!("{err}"))?;
+    let input = &input["fertilizer-to-water map:".len() + 1..];
+    let (input, mapping) = parse_block_map_2(input, &mut entries);
     block_maps.push(mapping);
-    let input = &input["water-to-light map:".len() + 3..];
-    let (input, mapping) = parse_block_map(input).map_err(|err| anyhow::anyhow!("{err}"))?;
+    let input = &input["water-to-light map:".len() + 1..];
+    let (input, mapping) = parse_block_map_2(input, &mut entries);
     block_maps.push(mapping);
-    let input = &input["light-to-temperature map:".len() + 3..];
-    let (input, mapping) = parse_block_map(input).map_err(|err| anyhow::anyhow!("{err}"))?;
+    let input = &input["light-to-temperature map:".len() + 1..];
+    let (input, mapping) = parse_block_map_2(input, &mut entries);
     block_maps.push(mapping);
-    let input = &input["temperature-to-humidity map:".len() + 3..];
-    let (input, mapping) = parse_block_map(input).map_err(|err| anyhow::anyhow!("{err}"))?;
+    let input = &input["temperature-to-humidity map:".len() + 1..];
+    let (input, mapping) = parse_block_map_2(input, &mut entries);
     block_maps.push(mapping);
-    let input = &input["humidity-to-location map:".len() + 3..];
-    let (_, mapping) = parse_block_map(input).map_err(|err| anyhow::anyhow!("{err}"))?;
+    let input = &input["humidity-to-location map:".len() + 1..];
+    let (_, mapping) = parse_block_map_2(input, &mut entries);
     block_maps.push(mapping);
 
+    let mut offset = 0;
     for bm in block_maps.iter_mut() {
-        bm.mappings.sort_unstable_by_key(|m| m.src_start);
+        entries[offset..offset + bm.map_count].sort_unstable_by_key(|m| m.src_start);
+        offset += bm.map_count;
+    }
+
+    let mut offset = 0;
+    for bm in block_maps.iter_mut() {
+        bm.mappings = &entries[offset..offset + bm.map_count];
+        offset += bm.map_count;
     }
 
     let p1 = seeds
@@ -60,110 +71,122 @@ fn solve_p2(seeds: &[u64], block_maps: &[BlockMap]) -> Option<u64> {
         .flatten()
 }
 
-fn solve_p2_2(block_maps: &[BlockMap], min: u64, max: u64) -> Option<u64> {
+macro_rules! subsolve_and_update {
+    ($rest:tt, $new_min:tt, $new_max:tt, $res:tt) => {
+        if let Some(new_res) = solve_p2_2($rest, $new_min, $new_max) {
+            $res = match $res {
+                Some(res) => Some(min(res, new_res)),
+                None => Some(new_res),
+            }
+        }
+    };
+}
+
+fn solve_p2_2(block_maps: &[BlockMap], curr_min: u64, curr_max: u64) -> Option<u64> {
     if let [bm, rest @ ..] = block_maps {
         let mut res = None;
 
         let fmap = &bm.mappings[0];
-        let clamped_min = min;
-        let clamped_max = std::cmp::min(max, fmap.src_start);
-        if clamped_min < clamped_max {
-            if let Some(new_res) = solve_p2_2(rest, clamped_min, clamped_max) {
-                res = match res {
-                    Some(res) => Some(std::cmp::min(res, new_res)),
-                    None => Some(new_res),
-                }
-            }
+        let new_min = curr_min;
+        let new_max = min(curr_max, fmap.src_start);
+        if new_min < new_max {
+            subsolve_and_update!(rest, new_min, new_max, res);
         }
 
         let lmap = &bm.mappings[bm.mappings.len() - 1];
         let lmin = lmap.src_start + lmap.width;
-        let clamped_min = std::cmp::max(min, lmin);
-        let clamped_max = max;
-        if clamped_min < clamped_max {
-            if let Some(new_res) = solve_p2_2(rest, clamped_min, clamped_max) {
-                res = match res {
-                    Some(res) => Some(std::cmp::min(res, new_res)),
-                    None => Some(new_res),
-                }
-            }
+        let new_min = max(curr_min, lmin);
+        let new_max = curr_max;
+        if new_min < new_max {
+            subsolve_and_update!(rest, new_min, new_max, res);
         }
 
-        for m in &bm.mappings {
+        for m in bm.mappings {
             let start = m.src_start;
-            if start > max {
+            if start > curr_max {
                 break;
             }
             let end = m.src_start + m.width;
-            let clamped_min = std::cmp::max(min, start);
-            let clamped_max = std::cmp::min(max, end);
+            let clamped_min = max(curr_min, start);
+            let clamped_max = min(curr_max, end);
             if clamped_min < clamped_max {
                 let new_min = clamped_min - m.src_start + m.dst_start;
                 let new_max = clamped_max - m.src_start + m.dst_start;
-                if let Some(new_res) = solve_p2_2(rest, new_min, new_max) {
-                    res = match res {
-                        Some(res) => Some(std::cmp::min(res, new_res)),
-                        None => Some(new_res),
-                    }
-                }
+                subsolve_and_update!(rest, new_min, new_max, res);
             }
         }
 
         for (a, b) in bm.mappings.iter().tuple_windows() {
             let start = a.src_start + a.width;
-            if start > max {
+            if start > curr_max {
                 break;
             }
             let end = b.src_start;
-            let new_min = std::cmp::max(min, start);
-            let new_max = std::cmp::min(max, end);
+            let new_min = max(curr_min, start);
+            let new_max = min(curr_max, end);
             if new_min < new_max {
-                if let Some(new_res) = solve_p2_2(rest, new_min, new_max) {
-                    res = match res {
-                        Some(res) => Some(std::cmp::min(res, new_res)),
-                        None => Some(new_res),
-                    }
-                }
+                subsolve_and_update!(rest, new_min, new_max, res);
             }
         }
 
         res
     } else {
-        Some(min)
+        Some(curr_min)
     }
 }
 
-fn parse_block_map(input: &[u8]) -> nom::IResult<&[u8], BlockMap> {
-    map(
-        separated_list1(
-            tag("\n"),
-            map(
-                tuple((
-                    nom::character::complete::u64,
-                    tag(" "),
-                    nom::character::complete::u64,
-                    tag(" "),
-                    nom::character::complete::u64,
-                )),
-                |(dst_start, _, src_start, _, width)| Mapping {
-                    src_start,
-                    dst_start,
-                    width,
-                },
-            ),
-        ),
-        |mappings| BlockMap { mappings },
-    )(input)
+fn parse_block_map_2<'a>(
+    mut input: &'a [u8],
+    entries: &mut Vec<Mapping>,
+) -> (&'a [u8], BlockMap<'a>) {
+    let mut map_count = 0;
+    while !input.is_empty() && input[0] != b'\n' {
+        let mut dst_start = 0;
+        while input[0].is_ascii_digit() {
+            dst_start = dst_start * 10 + (input[0] - b'0') as u64;
+            input = &input[1..];
+        }
+        input = &input[1..];
+        let mut src_start = 0;
+        while input[0].is_ascii_digit() {
+            src_start = src_start * 10 + (input[0] - b'0') as u64;
+            input = &input[1..];
+        }
+        input = &input[1..];
+        let mut width = 0;
+        while input[0].is_ascii_digit() {
+            width = width * 10 + (input[0] - b'0') as u64;
+            input = &input[1..];
+        }
+        entries.push(Mapping {
+            src_start,
+            dst_start,
+            width,
+        });
+        map_count += 1;
+        input = &input[1..];
+    }
+    if !input.is_empty() {
+        input = &input[1..];
+    }
+    (
+        input,
+        BlockMap {
+            map_count,
+            mappings: &[],
+        },
+    )
 }
 
 #[derive(Debug)]
-struct BlockMap {
-    mappings: Vec<Mapping>,
+struct BlockMap<'a> {
+    map_count: usize,
+    mappings: &'a [Mapping],
 }
 
-impl BlockMap {
+impl BlockMap<'_> {
     fn apply(&self, val: u64) -> u64 {
-        for mapping in &self.mappings {
+        for mapping in self.mappings {
             if let Some(val2) = mapping.map(val) {
                 return val2;
             }
