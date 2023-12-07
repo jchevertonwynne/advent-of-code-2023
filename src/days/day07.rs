@@ -1,7 +1,4 @@
-use std::{
-    cmp::{Ord, Ordering},
-    fmt::Debug,
-};
+use std::cmp::{Ord, Ordering};
 
 use crate::{DayResult, IntoDayResult};
 
@@ -10,44 +7,46 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
 
     let mut input = input.as_bytes();
     while !input.is_empty() {
-        let (_input, hand, bet) = parse_hand(input);
+        let (_input, hand, cards, bet) = parse_hand(input);
         input = _input;
-        hands.push((hand, bet));
+        let hand_joker = HandJoker::from((hand.card_powers, cards));
+        hands.push((hand, hand_joker, bet));
     }
 
-    hands.sort_unstable_by(|(a, _), (b, _)| Ord::cmp(&a, &b));
-    let p1: usize = hands.iter().zip(1..).map(|(&(_, b), i)| b * i).sum();
+    hands.sort_unstable_by(|(a, _, _), (b, _, _)| Ord::cmp(&a, &b));
+    let p1: usize = hands.iter().zip(1..).map(|(&(_, _, b), i)| b * i).sum();
 
-    hands.sort_unstable_by(|&(a, _), &(b, _)| {
-        let a: HandJoker = a.into();
-        let b: HandJoker = b.into();
-        Ord::cmp(&a, &b)
-    });
-    let p2: usize = hands.iter().zip(1..).map(|(&(_, b), i)| b * i).sum();
+    hands.sort_unstable_by(|&(_, a, _), &(_, b, _)| Ord::cmp(&a, &b));
+    let p2: usize = hands.iter().zip(1..).map(|(&(_, _, b), i)| b * i).sum();
 
     (p1, p2).into_result()
 }
 
-fn parse_hand(input: &[u8]) -> (&[u8], Hand, usize) {
-    let mut hand = Hand {
-        raw_cards: [0; 5],
-        card_powers: [0; 5],
-        hand_type: 0,
-    };
+const fn table() -> [u8; 64] {
+    let mut table = [0; 64];
+    const MAPPING: [u8; 13] = [
+        b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'T', b'J', b'Q', b'K', b'A',
+    ];
+
+    let mut i = 0;
+    while i < MAPPING.len() {
+        table[(MAPPING[i] - b'0') as usize] = i as u8;
+        i += 1;
+    }
+
+    table
+}
+
+fn parse_hand(input: &[u8]) -> (&[u8], Hand, [u8; 13], usize) {
+    const LOOKUP: [u8; 64] = table();
+    let mut raw_cards = [0; 5];
     let mut cards = [0; 13];
+    let mut card_powers = [0; 5];
     for (i, &c) in input[0..5].iter().enumerate() {
-        hand.raw_cards[i] = c;
-        let power = match c {
-            b'2'..=b'9' => (c - b'2') as usize,
-            b'A' => 12,
-            b'K' => 11,
-            b'Q' => 10,
-            b'J' => 9,
-            b'T' => 8,
-            _ => unreachable!("lmao"),
-        };
-        hand.card_powers[i] = power as u8;
-        cards[power] += 1;
+        raw_cards[i] = c;
+        let power = LOOKUP[(c - b'0') as usize];
+        card_powers[i] = power;
+        cards[power as usize] += 1;
     }
 
     let mut input = &input[6..];
@@ -57,29 +56,22 @@ fn parse_hand(input: &[u8]) -> (&[u8], Hand, usize) {
         input = &input[1..];
     }
 
-    hand.hand_type = hand.hand_type(&cards);
+    let hand = Hand {
+        card_powers,
+        hand_type: Hand::hand_type(&cards),
+    };
 
-    (&input[1..], hand, num)
+    (&input[1..], hand, cards, num)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct Hand {
-    raw_cards: [u8; 5],
     card_powers: [u8; 5],
     hand_type: u8,
 }
 
-impl Debug for Hand {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for c in self.raw_cards {
-            write!(f, "{}", c as char)?;
-        }
-        Ok(())
-    }
-}
-
 impl Hand {
-    fn collate(&self, cards: &[u8; 13]) -> [u8; 6] {
+    fn collate(cards: &[u8; 13]) -> [u8; 6] {
         let mut counts = [0; 6];
         for &c in cards {
             counts[c as usize] += 1;
@@ -88,8 +80,8 @@ impl Hand {
         counts
     }
 
-    fn hand_type(self, cards: &[u8; 13]) -> u8 {
-        let counts = self.collate(cards);
+    fn hand_type(cards: &[u8; 13]) -> u8 {
+        let counts = Hand::collate(cards);
 
         if counts[5] == 1 {
             return 7;
@@ -122,8 +114,8 @@ impl Hand {
 impl Ord for Hand {
     fn cmp(&self, other: &Self) -> Ordering {
         Ord::cmp(
-            &(self.hand_type, self.card_powers),
-            &(other.hand_type, other.card_powers),
+            &(self.hand_type, &self.card_powers),
+            &(other.hand_type, &other.card_powers),
         )
     }
 }
@@ -140,42 +132,39 @@ struct HandJoker {
     hand_type: u8,
 }
 
-impl From<&'_ [u8]> for HandJoker {
-    fn from(value: &'_ [u8]) -> Self {
-        let mut hand = HandJoker {
-            card_powers: [0; 5],
-            hand_type: 0,
-        };
-        let mut cards = [0; 13];
-        for (i, &c) in value.iter().enumerate() {
-            let power = match c {
-                b'2'..=b'9' => (c - b'1') as usize,
-                b'A' => 12,
-                b'K' => 11,
-                b'Q' => 10,
-                b'J' => 0,
-                b'T' => 9,
-                _ => unreachable!("lmao"),
-            };
-            hand.card_powers[i] = power as u8;
-            cards[power] += 1;
+impl std::fmt::Debug for HandJoker {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let chars = b"J23456789TQKA";
+
+        for p in self.card_powers {
+            write!(f, "{}", chars[p as usize] as char)?;
         }
 
-        hand.hand_type = hand.hand_type(&mut cards);
-
-        hand
+        Ok(())
     }
 }
 
-impl From<Hand> for HandJoker {
-    fn from(value: Hand) -> Self {
-        let Hand { raw_cards, .. } = value;
-        HandJoker::from(raw_cards.as_slice())
+impl From<([u8; 5], [u8; 13])> for HandJoker {
+    fn from((card_powers, mut cards): ([u8; 5], [u8; 13])) -> Self {
+        cards[..10].rotate_right(1);
+
+        let card_powers = card_powers.map(|v| match v {
+            9 => 0,
+            v if v < 9 => v + 1,
+            _ => v,
+        });
+
+        let hand_type = HandJoker::hand_type(&mut cards);
+
+        HandJoker {
+            card_powers,
+            hand_type,
+        }
     }
 }
 
 impl HandJoker {
-    fn collate(self, cards: &mut [u8; 13]) -> [u8; 6] {
+    fn collate(cards: &mut [u8; 13]) -> [u8; 6] {
         let jokers = std::mem::take(&mut cards[0]);
 
         let mut counts = [0; 6];
@@ -191,14 +180,16 @@ impl HandJoker {
                     break;
                 }
             }
+
             counts[update] -= 1;
             counts[update + jokers as usize] += 1;
         }
+
         counts
     }
 
-    fn hand_type(self, cards: &mut [u8; 13]) -> u8 {
-        let counts = self.collate(cards);
+    fn hand_type(cards: &mut [u8; 13]) -> u8 {
+        let counts = HandJoker::collate(cards);
 
         if counts[5] == 1 {
             return 7;
@@ -208,13 +199,15 @@ impl HandJoker {
             return 6;
         }
 
-        if counts[3] == 1 && counts[2] == 1 {
-            return 5;
+        if counts[3] == 1 {
+            return 4 | (counts[2] == 1) as u8;
+
+            // return 5;
         }
 
-        if counts[3] == 1 && counts[1] == 2 {
-            return 4;
-        }
+        // if counts[3] == 1 && counts[1] == 2 {
+        //     return 4;
+        // }
 
         if counts[2] == 2 && counts[1] == 1 {
             return 3;
@@ -231,8 +224,8 @@ impl HandJoker {
 impl Ord for HandJoker {
     fn cmp(&self, other: &Self) -> Ordering {
         Ord::cmp(
-            &(self.hand_type, self.card_powers),
-            &(other.hand_type, other.card_powers),
+            &(self.hand_type, &self.card_powers),
+            &(other.hand_type, &other.card_powers),
         )
     }
 }
