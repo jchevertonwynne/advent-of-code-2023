@@ -24,6 +24,7 @@ dependencies = [
  "anyhow",
  "arrayvec",
  "bstr",
+ "bumpalo",
  "chrono",
  "clap 4.4.8",
  "criterion",
