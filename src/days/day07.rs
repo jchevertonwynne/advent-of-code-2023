@@ -7,9 +7,8 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
 
     let mut input = input.as_bytes();
     while !input.is_empty() {
-        let (_input, hand, cards, bet) = parse_hand(input);
+        let (_input, hand, hand_joker, bet) = parse_hand(input);
         input = _input;
-        let hand_joker = HandJoker::from((hand.card_powers, cards));
         hands.push((hand, hand_joker, bet));
     }
 
@@ -37,7 +36,7 @@ const fn table() -> [u8; 64] {
     table
 }
 
-fn parse_hand(input: &[u8]) -> (&[u8], Hand, [u8; 13], usize) {
+fn parse_hand(input: &[u8]) -> (&[u8], Hand, HandJoker, usize) {
     const LOOKUP: [u8; 64] = table();
     let mut raw_cards = [0; 5];
     let mut cards = [0; 13];
@@ -60,8 +59,9 @@ fn parse_hand(input: &[u8]) -> (&[u8], Hand, [u8; 13], usize) {
         card_powers,
         hand_type: Hand::hand_type(&cards),
     };
+    let hand_joker = HandJoker::from((hand.card_powers, cards));
 
-    (&input[1..], hand, cards, num)
+    (&input[1..], hand, hand_joker, num)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

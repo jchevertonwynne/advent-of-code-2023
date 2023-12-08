@@ -68,11 +68,13 @@ macro_rules! impl_answer_enum {
 impl_answer_enum! {
     (String, String),
     (Usize, usize),
+    (U128, u128),
     (U64, u64),
     (U32, u32),
     (U16, u16),
     (U8, u8),
     (Isize, isize),
+    (I128, i128),
     (I64, i64),
     (I32, i32),
     (I16, i16),
