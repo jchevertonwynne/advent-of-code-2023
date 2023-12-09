@@ -13,20 +13,38 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
 
     let mut triangle = Vec::new();
 
-    for line in input.lines() {
+    let mut input = input.as_bytes();
+
+    while !input.is_empty() {
         triangle.clear();
         let mut vd = pool.pull(VecDeque::new);
         vd.clear();
-        let nums = line
-            .split(' ')
-            .map(|n| n.parse())
-            .try_fold(vd, |mut acc, v| {
-                v.map(|v| {
-                    acc.push_back(v);
-                    acc
-                })
-            })?;
-        triangle.push(nums);
+
+        while !input.is_empty() {
+            let mut negative = false;
+            let mut n = 0;
+            loop {
+                let b = input[0];
+                if b == b'-' {
+                    negative = true;
+                } else if b.is_ascii_digit() {
+                    n = n * 10 + (b - b'0') as isize;
+                } else {
+                    break;
+                }
+                input = &input[1..];
+            }
+            if negative {
+                n *= -1;
+            }
+            vd.push_back(n);
+            let last = input[0];
+            input = &input[1..];
+            if last == b'\n' {
+                break;
+            }
+        }
+        triangle.push(vd);
         loop {
             let last = triangle.last().context("exp at least 1 row")?;
             let mut final_row = true;
