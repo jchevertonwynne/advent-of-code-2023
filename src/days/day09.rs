@@ -14,8 +14,10 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
         while !input.is_empty() {
             let mut negative = false;
             let mut n = 0;
+
             loop {
                 let b = input[0];
+
                 if b == b'-' {
                     negative = true;
                 } else if b.is_ascii_digit() {
@@ -23,41 +25,46 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
                 } else {
                     break;
                 }
+
                 input = &input[1..];
             }
+
             if negative {
                 n *= -1;
             }
+
             triangle.push(n);
             let last = input[0];
             input = &input[1..];
+
             if last == b'\n' {
                 break;
             }
         }
+
         let mut layers = 1;
 
         loop {
             let mut final_row = true;
             let r = range(layers, layers, triangle.len());
+
             for a in r.start..(r.end - 1) {
                 let val = triangle[a + 1] - triangle[a];
                 final_row &= val == 0;
                 triangle.push(val);
             }
+
             layers += 1;
+
             if final_row {
                 break;
             }
         }
 
-        let (p1_end, p2_front) = (1..=layers)
-            .rev()
-            .fold((0, 0), |(p1_end, p2_front), layer| {
-                let r = range(layers, layer, triangle.len());
-                let row = &triangle[r];
-                (row[row.len() - 1] + p1_end, row[0] - p2_front)
-            });
+        let (p1_end, p2_front) = (1..layers).rev().fold((0, 0), |(p1_end, p2_front), layer| {
+            let row = &triangle[range(layers, layer, triangle.len())];
+            (row[row.len() - 1] + p1_end, row[0] - p2_front)
+        });
 
         p1 += p1_end;
         p2 += p2_front;
@@ -67,9 +74,6 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
 }
 
 fn triangle(n: usize) -> usize {
-    if n == 0 {
-        return 0;
-    }
     (n * (n - 1)) / 2
 }
 
@@ -80,6 +84,7 @@ fn range(layers: usize, row: usize, len: usize) -> std::ops::Range<usize> {
     let start = common * (row - 1) + (t - triangle(layers - row + 1));
     start..(start + common + extra)
 }
+
 #[cfg(test)]
 mod tests {
     use crate::{days::day09::solve, IntoDayResult};
