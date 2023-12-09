@@ -1,6 +1,3 @@
-use anyhow::Context;
-use itertools::Itertools;
-
 use crate::{DayResult, IntoDayResult};
 
 pub fn solve(input: &str) -> anyhow::Result<DayResult> {
@@ -8,7 +5,6 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
     let mut p2 = 0;
 
     let mut triangle = Vec::new();
-    let mut layers = 0;
 
     let mut input = input.as_bytes();
 
@@ -39,7 +35,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
                 break;
             }
         }
-        layers = 1;
+        let mut layers = 1;
 
         loop {
             let mut final_row = true;
@@ -55,17 +51,14 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
             }
         }
 
-        let mut end = 0;
-        let (p1_end, p2_front) = (1..=layers).fold((0, 0), |(p1_end, p2_front), layer| {
-            let r = range(layers, layer, triangle.len());
-            assert_eq!(end, r.start);
-            end = r.end;
-            let row = &triangle[r];
-            println!("{:?} {}", row, row.len());
-            (row[row.len() - 1] + p1_end, row[0] - p2_front)
-        });
+        let (p1_end, p2_front) = (1..=layers)
+            .rev()
+            .fold((0, 0), |(p1_end, p2_front), layer| {
+                let r = range(layers, layer, triangle.len());
+                let row = &triangle[r];
+                (row[row.len() - 1] + p1_end, row[0] - p2_front)
+            });
 
-        println!("1= {} 2= {}", p1_end, p2_front);
         p1 += p1_end;
         p2 += p2_front;
     }
