@@ -309,13 +309,13 @@ where
 trait Pipe: Sized {
     fn pipe<F, U>(self, f: F) -> U
     where
-        F: Fn(Self) -> U;
+        F: FnMut(Self) -> U;
 }
 
 impl<T> Pipe for T {
-    fn pipe<F, U>(self, f: F) -> U
+    fn pipe<F, U>(self, mut f: F) -> U
     where
-        F: Fn(Self) -> U,
+        F: FnMut(Self) -> U,
     {
         f(self)
     }

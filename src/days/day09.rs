@@ -1,12 +1,10 @@
-use std::collections::VecDeque;
-
 use anyhow::Context;
 use itertools::Itertools;
 
 use crate::{DayResult, IntoDayResult};
 
 pub fn solve(input: &str) -> anyhow::Result<DayResult> {
-    let pool = object_pool::Pool::new(4, VecDeque::<isize>::new);
+    let pool = object_pool::Pool::new(4, Vec::<isize>::new);
 
     let mut p1 = 0;
     let mut p2 = 0;
@@ -17,7 +15,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
 
     while !input.is_empty() {
         triangle.clear();
-        let mut vd = pool.pull(VecDeque::new);
+        let mut vd = pool.pull(Vec::new);
         vd.clear();
 
         while !input.is_empty() {
@@ -37,7 +35,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
             if negative {
                 n *= -1;
             }
-            vd.push_back(n);
+            vd.push(n);
             let last = input[0];
             input = &input[1..];
             if last == b'\n' {
@@ -48,7 +46,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
         loop {
             let last = triangle.last().context("exp at least 1 row")?;
             let mut final_row = true;
-            let mut vd = pool.pull(VecDeque::new);
+            let mut vd = pool.pull(Vec::new);
             vd.clear();
             let next = last
                 .iter()
@@ -59,7 +57,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
                     res
                 })
                 .fold(vd, |mut acc, v| {
-                    acc.push_back(v);
+                    acc.push(v);
                     acc
                 });
             triangle.push(next);
@@ -67,23 +65,12 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
                 break;
             }
         }
-        for i in (0..triangle.len()).rev() {
-            let line_first = triangle[i][0];
-            let line_back = triangle[i][triangle[i].len() - 1];
-            let above = triangle.get(i + 1);
-            let above_first = above.map(|a| a[0]).unwrap_or(0);
-            let above_last = above.map(|a| a[a.len() - 1]).unwrap_or(0);
-            triangle[i].push_back(line_back + above_last);
-            triangle[i].push_front(line_first - above_first);
-        }
-        p1 += triangle
-            .first()
-            .map(|f| f[f.len() - 1])
-            .context("should be a last item on the first row")?;
-        p2 += triangle
-            .first()
-            .map(|f| f[0])
-            .context("should be a last item on the first row")?;
+
+        let (p1_end, p2_front) = triangle.iter().rev().fold((0, 0), |(p1_end, p2_front), t| {
+            (t[t.len() - 1] + p1_end, t[0] - p2_front)
+        });
+        p1 += p1_end;
+        p2 += p2_front;
     }
 
     (p1, p2).into_result()
