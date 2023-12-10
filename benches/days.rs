@@ -26,15 +26,16 @@ fn criterion_benchmark(c: &mut Criterion) {
         }};
     }
 
-    // bench_day!(day01);
-    // bench_day!(day02);
-    // bench_day!(day03);
-    // bench_day!(day04, is_test);
-    // bench_day!(day05);
-    // bench_day!(day06);
-    // bench_day!(day07);
-    // bench_day!(day08, is_test);
+    bench_day!(day01);
+    bench_day!(day02);
+    bench_day!(day03);
+    bench_day!(day04, is_test);
+    bench_day!(day05);
+    bench_day!(day06);
+    bench_day!(day07);
+    bench_day!(day08, is_test);
     bench_day!(day09);
+    bench_day!(day10);
 }
 
 criterion_group!(benches, criterion_benchmark);

@@ -381,13 +381,13 @@ mod tests {
     fn works_for_example() {
         const INPUT: &str = include_str!("../../input/day10_test.txt");
         let solution = solve(INPUT).unwrap();
-        assert_eq!(().into_day_result(), solution);
+        assert_eq!((80, 10).into_day_result(), solution);
     }
 
     #[test]
     fn works_for_input() {
         const INPUT: &str = include_str!("../../input/day10.txt");
         let solution = solve(INPUT).unwrap();
-        assert_eq!(().into_day_result(), solution);
+        assert_eq!((6_882, 491).into_day_result(), solution);
     }
 }
