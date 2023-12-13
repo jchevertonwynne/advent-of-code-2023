@@ -14,85 +14,78 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
             .context("there is a newline")?;
         let height = (block.len() + 1) / (width + 1);
 
-        let mut p1_match = false;
-        let mut p2_match = false;
+        for (mirrored_segments, i) in (1..height)
+            .scan((false, false), |(found_width, found_width_m1), h| {
+                if *found_width && *found_width_m1 {
+                    return None;
+                }
 
-        let vertical_match = (1..height).find(|&h| {
-            let left = h;
-            let right = height - h;
-            let m = std::cmp::min(left, right);
+                let to_take = std::cmp::min(h, height - h);
 
-            (0..width).all(|w| {
-                (h..height)
-                    .map(|h| block[w + h * (width + 1)])
-                    .take(m)
-                    .eq((0..h).rev().map(|h| block[w + h * (width + 1)]).take(m))
+                let tot = (0..width)
+                    .map(|w| {
+                        (h..height)
+                            .map(|h| block[w + h * (width + 1)])
+                            .take(to_take)
+                            .eq((0..h)
+                                .rev()
+                                .map(|h| block[w + h * (width + 1)])
+                                .take(to_take)) as usize
+                    })
+                    .sum::<usize>();
+
+                if tot == width {
+                    *found_width = true;
+                } else if tot == width - 1 {
+                    *found_width_m1 = true;
+                }
+
+                Some(tot)
             })
-        });
-
-        if let Some(vertical_split) = vertical_match {
-            p1 += 100 * vertical_split;
-            p1_match = true;
+            .zip(1..)
+        {
+            if mirrored_segments == width {
+                p1 += 100 * i;
+            } else if mirrored_segments == width - 1 {
+                p2 += 100 * i;
+            }
         }
 
-        let vertical_match_2 = (1..height).find(|&h| {
-            let left = h;
-            let right = height - h;
-            let m = std::cmp::min(left, right);
+        for (mirrored_segments, i) in (1..width)
+            .scan((false, false), |(found_height, found_height_m1), w| {
+                if *found_height && *found_height_m1 {
+                    return None;
+                }
 
-            (0..width)
-                .map(|w| {
-                    (h..height)
-                        .map(|h| block[w + h * (width + 1)])
-                        .take(m)
-                        .eq((0..h).rev().map(|h| block[w + h * (width + 1)]).take(m))
-                        as usize
-                })
-                .sum::<usize>()
-                == width - 1
-        });
+                let to_take = std::cmp::min(w, width - w);
 
-        if let Some(vertical_split) = vertical_match_2 {
-            p2 += 100 * vertical_split;
-            p2_match = true;
-        }
-
-        if !p1_match {
-            let horizontal_match = (1..width).find(|&w| {
-                let left = w;
-                let right = width - w;
-                let m = std::cmp::min(left, right);
-
-                (0..height).all(|h| {
-                    (w..width)
-                        .map(|w| block[w + h * (width + 1)])
-                        .take(m)
-                        .eq((0..w).rev().map(|w| block[w + h * (width + 1)]).take(m))
-                })
-            });
-
-            p1 += horizontal_match.context("this should always match")?;
-        }
-
-        if !p2_match {
-            let horizontal_match_2 = (1..width).find(|&w| {
-                let left = w;
-                let right = width - w;
-                let m = std::cmp::min(left, right);
-
-                (0..height)
+                let tot = (0..height)
                     .map(|h| {
                         (w..width)
                             .map(|w| block[w + h * (width + 1)])
-                            .take(m)
-                            .eq((0..w).rev().map(|w| block[w + h * (width + 1)]).take(m))
-                            as usize
+                            .take(to_take)
+                            .eq((0..w)
+                                .rev()
+                                .map(|w| block[w + h * (width + 1)])
+                                .take(to_take)) as usize
                     })
-                    .sum::<usize>()
-                    == height - 1
-            });
+                    .sum::<usize>();
 
-            p2 += horizontal_match_2.context("this should always match")?;
+                if tot == height {
+                    *found_height = true;
+                } else if tot == height - 1 {
+                    *found_height_m1 = true;
+                }
+
+                Some(tot)
+            })
+            .zip(1..)
+        {
+            if mirrored_segments == height {
+                p1 += i;
+            } else if mirrored_segments == height - 1 {
+                p2 += i;
+            }
         }
     }
 
