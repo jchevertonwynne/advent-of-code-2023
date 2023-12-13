@@ -14,9 +14,11 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
             .context("there is a newline")?;
         let height = (block.len() + 1) / (width + 1);
 
+        let mut done_p1 = false;
+        let mut done_p2 = false;
         for (mirrored_segments, i) in (1..height)
-            .scan((false, false), |(found_width, found_width_m1), h| {
-                if *found_width && *found_width_m1 {
+            .scan((false, false), |(done_p1, done_p2), h| {
+                if *done_p1 && *done_p2 {
                     return None;
                 }
 
@@ -35,9 +37,9 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
                     .sum::<usize>();
 
                 if tot == width {
-                    *found_width = true;
+                    *done_p1 = true;
                 } else if tot == width - 1 {
-                    *found_width_m1 = true;
+                    *done_p2 = true;
                 }
 
                 Some(tot)
@@ -46,14 +48,16 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
         {
             if mirrored_segments == width {
                 p1 += 100 * i;
+                done_p1 = true;
             } else if mirrored_segments == width - 1 {
                 p2 += 100 * i;
+                done_p2 = true;
             }
         }
 
         for (mirrored_segments, i) in (1..width)
-            .scan((false, false), |(found_height, found_height_m1), w| {
-                if *found_height && *found_height_m1 {
+            .scan((done_p1, done_p2), |(done_p1, done_p2), w| {
+                if *done_p1 && *done_p2 {
                     return None;
                 }
 
@@ -72,9 +76,9 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
                     .sum::<usize>();
 
                 if tot == height {
-                    *found_height = true;
+                    *done_p1 = true;
                 } else if tot == height - 1 {
-                    *found_height_m1 = true;
+                    *done_p2 = true;
                 }
 
                 Some(tot)
