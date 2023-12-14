@@ -16,79 +16,47 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
 
         let mut done_p1 = false;
         let mut done_p2 = false;
-        for (mirrored_segments, i) in (1..height)
-            .scan((false, false), |(done_p1, done_p2), h| {
-                if *done_p1 && *done_p2 {
-                    return None;
-                }
+        for h in 1..height {
+            let tot = (0..width)
+                .map(|w| {
+                    let a = (h..height).map(|h| block[w + h * (width + 1)]);
+                    let b = (0..h).rev().map(|h| block[w + h * (width + 1)]);
+                    (a.zip(b).map(|(a, b)| (a != b) as usize).sum::<usize>() == 0) as usize
+                })
+                .sum::<usize>();
 
-                let to_take = std::cmp::min(h, height - h);
-
-                let tot = (0..width)
-                    .map(|w| {
-                        (h..height)
-                            .map(|h| block[w + h * (width + 1)])
-                            .take(to_take)
-                            .eq((0..h)
-                                .rev()
-                                .map(|h| block[w + h * (width + 1)])
-                                .take(to_take)) as usize
-                    })
-                    .sum::<usize>();
-
-                if tot == width {
-                    *done_p1 = true;
-                } else if tot == width - 1 {
-                    *done_p2 = true;
-                }
-
-                Some(tot)
-            })
-            .zip(1..)
-        {
-            if mirrored_segments == width {
-                p1 += 100 * i;
+            if tot == width {
                 done_p1 = true;
-            } else if mirrored_segments == width - 1 {
-                p2 += 100 * i;
+                p1 += 100 * h;
+            } else if tot == width - 1 {
                 done_p2 = true;
+                p2 += 100 * h;
+            }
+
+            if done_p1 && done_p2 {
+                break;
             }
         }
 
-        for (mirrored_segments, i) in (1..width)
-            .scan((done_p1, done_p2), |(done_p1, done_p2), w| {
-                if *done_p1 && *done_p2 {
-                    return None;
-                }
+        for w in 1..width {
+            let tot = (0..height)
+                .map(|h| {
+                    let a = (w..width).map(|w| block[w + h * (width + 1)]);
+                    let b = (0..w).rev().map(|w| block[w + h * (width + 1)]);
+                    (a.zip(b).map(|(a, b)| (a != b) as usize).sum::<usize>() == 0) as usize
+                })
+                .sum::<usize>();
 
-                let to_take = std::cmp::min(w, width - w);
+            if tot == height {
+                done_p1 = true;
+                p1 += w;
+            } else if tot == height - 1 {
+                done_p2 = true;
+                p2 += w;
+            }
 
-                let tot = (0..height)
-                    .map(|h| {
-                        (w..width)
-                            .map(|w| block[w + h * (width + 1)])
-                            .take(to_take)
-                            .eq((0..w)
-                                .rev()
-                                .map(|w| block[w + h * (width + 1)])
-                                .take(to_take)) as usize
-                    })
-                    .sum::<usize>();
-
-                if tot == height {
-                    *done_p1 = true;
-                } else if tot == height - 1 {
-                    *done_p2 = true;
-                }
-
-                Some(tot)
-            })
-            .zip(1..)
-        {
-            if mirrored_segments == height {
-                p1 += i;
-            } else if mirrored_segments == height - 1 {
-                p2 += i;
+            if done_p1 && done_p2 {
+                break;
             }
         }
     }
