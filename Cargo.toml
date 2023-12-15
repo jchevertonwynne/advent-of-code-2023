@@ -28,3 +28,6 @@ criterion = { version = "0.4", features = ["html_reports"] }
 [[bench]]
 name = "days"
 harness = false
+
+[profile.bench]
+debug = true

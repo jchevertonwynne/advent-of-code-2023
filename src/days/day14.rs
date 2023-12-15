@@ -1,36 +1,53 @@
-use std::collections::hash_map::Entry;
+use std::{borrow::BorrowMut, cell::Cell, collections::hash_map::Entry};
 
 use fxhash::FxHashMap;
 
 use crate::{DayResult, IntoDayResult};
 
 pub fn solve(input: &str) -> anyhow::Result<DayResult> {
+    let mut moveable = vec![];
     let mut world = input
         .lines()
-        .map(|line| line.as_bytes().to_vec())
+        .enumerate()
+        .map(|(y, line)| {
+            line.as_bytes()
+                .iter()
+                .enumerate()
+                .map(|(x, &t)| {
+                    if t == b'O' {
+                        let rock = Moveable {
+                            x: Cell::new(x),
+                            y: Cell::new(y),
+                        };
+                        moveable.push(rock);
+                    }
+
+                    t == b'.'
+                })
+                .collect::<Vec<_>>()
+        })
         .collect::<Vec<_>>();
 
-    north(&mut world);
-
-    let p1 = score(&world);
-    west(&mut world);
-    south(&mut world);
-    east(&mut world);
+    north(&mut moveable, &mut world);
+    let p1 = score(&moveable, world.len());
+    west(&mut moveable, &mut world);
+    south(&mut moveable, &mut world);
+    east(&mut moveable, &mut world);
 
     let mut seen = FxHashMap::default();
 
     let mut p2 = 0;
 
     for cycles in 1.. {
-        match seen.entry((repr(&world), score(&world))) {
+        match seen.entry((repr(&moveable), score(&moveable, world.len()))) {
             Entry::Occupied(prev_cycles) => {
                 let prev_cycles = prev_cycles.get();
                 let cycle_period = cycles - prev_cycles;
                 let rem = (1_000_000_000 - prev_cycles) % cycle_period;
                 for _ in 0..rem {
-                    cycle(&mut world);
+                    cycle(&mut moveable, &mut world);
                 }
-                p2 = score(&world);
+                p2 = score(&moveable, world.len());
                 break;
             }
             Entry::Vacant(v) => {
@@ -38,110 +55,104 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
             }
         }
 
-        cycle(&mut world);
+        cycle(&mut moveable, &mut world);
     }
 
     (p1, p2).into_result()
 }
 
-fn repr(world: &[Vec<u8>]) -> Vec<u8> {
-    let mut res = Vec::with_capacity((world.iter().map(|l| l.len()).sum::<usize>() / 8) + 1);
+struct Moveable {
+    x: Cell<usize>,
+    y: Cell<usize>,
+}
 
-    let mut curr = 0;
-    for (i, &t) in world.iter().flat_map(|l| l.iter()).enumerate() {
-        curr = (curr << 1) + (t == b'O') as u8;
-        if i % 8 == 0 {
-            res.push(curr);
-            curr = 0;
-        }
+fn repr(moveable: &[Moveable]) -> Vec<usize> {
+    let mut res = vec![];
+
+    for m in moveable {
+        res.push((m.x.get() << 32) + m.y.get());
     }
 
-    res.push(curr);
+    res.sort_unstable();
 
     res
 }
 
-fn score(world: &[Vec<u8>]) -> usize {
-    world
-        .iter()
-        .rev()
-        .zip(1..)
-        .map(|(line, score)| line.iter().filter(|&&t| t == b'O').count() * score)
-        .sum::<usize>()
+fn score(moveable: &[Moveable], world_height: usize) -> usize {
+    moveable.iter().map(|m| world_height - m.y.get()).sum()
 }
 
-fn cycle(world: &mut [Vec<u8>]) {
-    north(world);
-    west(world);
-    south(world);
-    east(world);
+fn cycle(moveable: &mut [Moveable], world: &mut [impl BorrowMut<[bool]>]) {
+    north(moveable, world);
+    west(moveable, world);
+    south(moveable, world);
+    east(moveable, world);
 }
 
-fn north(world: &mut [Vec<u8>]) {
-    for y in 0..world.len() {
-        for x in 0..world[0].len() {
-            let mut y = y;
-            while y != 0 {
-                if world[y][x] == b'O' && world[y - 1][x] == b'.' {
-                    world[y - 1][x] = b'O';
-                    world[y][x] = b'.';
-                } else {
-                    break;
-                }
-                y -= 1;
+fn north(moveable: &mut [Moveable], world: &mut [impl BorrowMut<[bool]>]) {
+    moveable.sort_unstable_by_key(|m| m.y.get());
+    for m in moveable {
+        let mut y = m.y.get();
+        while y != 0 {
+            if world[m.y.get() - 1].borrow_mut()[m.x.get()] {
+                world[m.y.get() - 1].borrow_mut()[m.x.get()] = false;
+                world[m.y.get()].borrow_mut()[m.x.get()] = true;
+                m.y.set(m.y.get() - 1);
+            } else {
+                break;
             }
+            y -= 1;
         }
     }
 }
 
-fn south(world: &mut [Vec<u8>]) {
-    for y in (0..world.len()).rev() {
-        for x in 0..world[0].len() {
-            let mut y = y;
-            while y != world.len() - 1 {
-                if world[y][x] == b'O' && world[y + 1][x] == b'.' {
-                    world[y + 1][x] = b'O';
-                    world[y][x] = b'.';
-                } else {
-                    break;
-                }
-                y += 1;
+fn south(moveable: &mut [Moveable], world: &mut [impl BorrowMut<[bool]>]) {
+    moveable.sort_unstable_by_key(|m| m.y.get());
+    for m in moveable.iter_mut().rev() {
+        let mut y = m.y.get();
+        while y != world.len() - 1 {
+            if world[m.y.get() + 1].borrow_mut()[m.x.get()] {
+                world[m.y.get() + 1].borrow_mut()[m.x.get()] = false;
+                world[m.y.get()].borrow_mut()[m.x.get()] = true;
+                m.y.set(m.y.get() + 1);
+            } else {
+                break;
             }
+            y += 1;
         }
     }
 }
 
-fn west(world: &mut [Vec<u8>]) {
-    for x in 0..world[0].len() {
-        for row in world.iter_mut() {
-            let mut x = x;
-            while x != 0 {
-                if row[x] == b'O' && row[x - 1] == b'.' {
-                    row[x - 1] = b'O';
-                    row[x] = b'.';
-                } else {
-                    break;
-                }
-                x -= 1;
+fn west(moveable: &mut [Moveable], world: &mut [impl BorrowMut<[bool]>]) {
+    moveable.sort_unstable_by_key(|m| m.x.get());
+    for m in moveable {
+        let mut x = m.x.get();
+        while x != 0 {
+            if world[m.y.get()].borrow_mut()[m.x.get() - 1] {
+                world[m.y.get()].borrow_mut()[m.x.get() - 1] = false;
+                world[m.y.get()].borrow_mut()[m.x.get()] = true;
+                m.x.set(m.x.get() - 1);
+            } else {
+                break;
             }
+            x -= 1;
         }
     }
 }
 
-fn east(world: &mut [Vec<u8>]) {
-    for x in (0..world[0].len()).rev() {
-        let row_len = world[0].len();
-        for row in world.iter_mut().rev() {
-            let mut x = x;
-            while x != row_len - 1 {
-                if row[x] == b'O' && row[x + 1] == b'.' {
-                    row[x + 1] = b'O';
-                    row[x] = b'.';
-                } else {
-                    break;
-                }
-                x += 1;
+fn east(moveable: &mut [Moveable], world: &mut [impl BorrowMut<[bool]>]) {
+    moveable.sort_unstable_by_key(|m| m.x.get());
+    for m in moveable.iter_mut().rev() {
+        let mut x = m.x.get();
+        while x != world[0].borrow().len() - 1 {
+            if world[m.y.get()].borrow_mut()[m.x.get() + 1] {
+                world[m.y.get()].borrow_mut()[m.x.get() + 1] = false;
+                world[m.y.get()].borrow_mut()[m.x.get()] = true;
+                m.x.set(m.x.get() + 1);
+            } else {
+                break;
             }
+            x += 1;
         }
     }
 }
