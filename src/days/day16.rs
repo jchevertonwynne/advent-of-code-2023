@@ -1,5 +1,4 @@
 use anyhow::Context;
-use fxhash::FxHashSet;
 
 use crate::{DayResult, IntoDayResult};
 
@@ -13,58 +12,33 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
         .context("there should be a newline")?;
     let height = input.len() / (width + 1);
 
-    let mut seen = FxHashSet::default();
-    let mut seen_dir = FxHashSet::default();
+    let mut seen = vec![0_u8; width * height];
 
-    traverse(0, 0, Right, input, width, height, &mut seen, &mut seen_dir);
-    let p1 = seen.len();
+    traverse(0, 0, Right, input, width, height, &mut seen);
+    let p1 = seen.iter().filter(|&&v| v != 0).count();
 
     let mut p2 = 0;
 
     for i in 0..width {
-        seen.clear();
-        seen_dir.clear();
-        traverse(i, 0, Down, input, width, height, &mut seen, &mut seen_dir);
-        p2 = std::cmp::max(p2, seen.len());
-        seen.clear();
-        seen_dir.clear();
-        traverse(
-            i,
-            height - 1,
-            Up,
-            input,
-            width,
-            height,
-            &mut seen,
-            &mut seen_dir,
-        );
-        p2 = std::cmp::max(p2, seen.len());
+        seen.iter_mut().for_each(|v| *v = 0);
+        traverse(i, 0, Down, input, width, height, &mut seen);
+        p2 = std::cmp::max(p2, seen.iter().filter(|&&v| v != 0).count());
+        seen.iter_mut().for_each(|v| *v = 0);
+        traverse(i, height - 1, Up, input, width, height, &mut seen);
+        p2 = std::cmp::max(p2, seen.iter().filter(|&&v| v != 0).count());
     }
 
     for j in 0..height {
-        seen.clear();
-        seen_dir.clear();
-        traverse(0, j, Right, input, width, height, &mut seen, &mut seen_dir);
-        p2 = std::cmp::max(p2, seen.len());
-        seen.clear();
-        seen_dir.clear();
-        traverse(
-            width - 1,
-            j,
-            Left,
-            input,
-            width,
-            height,
-            &mut seen,
-            &mut seen_dir,
-        );
-        p2 = std::cmp::max(p2, seen.len());
+        seen.iter_mut().for_each(|v| *v = 0);
+        traverse(0, j, Right, input, width, height, &mut seen);
+        p2 = std::cmp::max(p2, seen.iter().filter(|&&v| v != 0).count());
+        seen.iter_mut().for_each(|v| *v = 0);
+        traverse(width - 1, j, Left, input, width, height, &mut seen);
+        p2 = std::cmp::max(p2, seen.iter().filter(|&&v| v != 0).count());
     }
 
     (p1, p2).into_result()
 }
-
-type Vector = (usize, usize, Direction);
 
 #[allow(clippy::too_many_arguments)]
 fn traverse(
@@ -74,13 +48,13 @@ fn traverse(
     world: &[u8],
     width: usize,
     height: usize,
-    seen: &mut FxHashSet<(usize, usize)>,
-    seen_dir: &mut FxHashSet<Vector>,
+    seen: &mut Vec<u8>,
 ) {
-    seen.insert((x, y));
-    if !seen_dir.insert((x, y, direction)) {
+    let d: u8 = direction.into();
+    if seen[x + y * width] & d != 0 {
         return;
     }
+    seen[x + y * width] |= d;
 
     loop {
         match world[x + y * (width + 1)] {
@@ -88,16 +62,16 @@ fn traverse(
             b'|' => match direction {
                 Up | Down => {}
                 Left | Right => {
-                    traverse(x, y, Up, world, width, height, seen, seen_dir);
-                    traverse(x, y, Down, world, width, height, seen, seen_dir);
+                    traverse(x, y, Up, world, width, height, seen);
+                    traverse(x, y, Down, world, width, height, seen);
                     return;
                 }
             },
             b'-' => match direction {
                 Left | Right => {}
                 Up | Down => {
-                    traverse(x, y, Left, world, width, height, seen, seen_dir);
-                    traverse(x, y, Right, world, width, height, seen, seen_dir);
+                    traverse(x, y, Left, world, width, height, seen);
+                    traverse(x, y, Right, world, width, height, seen);
                     return;
                 }
             },
@@ -136,10 +110,11 @@ fn traverse(
         x = _x;
         y = _y;
 
-        seen.insert((x, y));
-        if !seen_dir.insert((x, y, direction)) {
+        let d: u8 = direction.into();
+        if seen[x + y * width] & d != 0 {
             return;
         }
+        seen[x + y * width] |= d;
     }
 }
 
@@ -149,6 +124,17 @@ enum Direction {
     Down,
     Left,
     Right,
+}
+
+impl From<Direction> for u8 {
+    fn from(value: Direction) -> Self {
+        match value {
+            Up => 1 << 0,
+            Down => 1 << 1,
+            Left => 1 << 2,
+            Right => 1 << 3,
+        }
+    }
 }
 
 #[cfg(test)]
