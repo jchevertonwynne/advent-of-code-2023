@@ -1,12 +1,11 @@
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 use anyhow::Context;
-use fxhash::FxHashSet;
 
 use crate::{DayResult, IntoDayResult};
 
-pub fn solve(_input: &str) -> anyhow::Result<DayResult> {
-    let input = _input.as_bytes();
+pub fn solve(input: &str) -> anyhow::Result<DayResult> {
+    let input = input.as_bytes();
     let width = input
         .iter()
         .position(|&b| b == b'\n')
@@ -14,30 +13,37 @@ pub fn solve(_input: &str) -> anyhow::Result<DayResult> {
     let height = input.len() / (width + 1);
     let end = (width - 1, height - 1);
 
-    let mut visited = FxHashSet::default();
+    let mut visited = vec![0_u64; width * height];
     let mut p1 = 0;
     let mut states = BinaryHeap::from_iter([Reverse(State::new((0, 0), 0, None, width, height))]);
     while let Some(Reverse(State {
-        coord,
+        coord: coord @ (x, y),
         score,
         direction,
         ..
     })) = states.pop()
     {
-        if !visited.insert((coord, direction)) {
-            continue;
+        if let Some((direction, dist)) = direction {
+            let v: u64 = direction.offset() << dist;
+            if (visited[x + y * width] & v) != 0 {
+                continue;
+            }
+
+            visited[x + y * width] |= v;
         }
+
         if coord == end {
             p1 = score;
             break;
         }
+
         match direction {
             Some((direction, dist)) => {
                 if dist < 3 {
-                    if let Some(moved) = coord.move_in(direction, width, height) {
+                    if let Some(moved @ (x, y)) = coord.move_in(direction, width, height) {
                         states.push(Reverse(State::new(
                             moved,
-                            score + (input[moved.0 + moved.1 * (width + 1)] - b'0') as usize,
+                            score + (input[x + y * (width + 1)] - b'0') as usize,
                             Some((direction, dist + 1)),
                             width,
                             height,
@@ -46,10 +52,10 @@ pub fn solve(_input: &str) -> anyhow::Result<DayResult> {
                 }
 
                 let left = direction.left();
-                if let Some(moved) = coord.move_in(left, width, height) {
+                if let Some(moved @ (x, y)) = coord.move_in(left, width, height) {
                     states.push(Reverse(State::new(
                         moved,
-                        score + (input[moved.0 + moved.1 * (width + 1)] - b'0') as usize,
+                        score + (input[x + y * (width + 1)] - b'0') as usize,
                         Some((left, 1)),
                         width,
                         height,
@@ -57,10 +63,10 @@ pub fn solve(_input: &str) -> anyhow::Result<DayResult> {
                 }
 
                 let right = direction.right();
-                if let Some(moved) = coord.move_in(right, width, height) {
+                if let Some(moved @ (x, y)) = coord.move_in(right, width, height) {
                     states.push(Reverse(State::new(
                         moved,
-                        score + (input[moved.0 + moved.1 * (width + 1)] - b'0') as usize,
+                        score + (input[x + y * (width + 1)] - b'0') as usize,
                         Some((right, 1)),
                         width,
                         height,
@@ -69,10 +75,10 @@ pub fn solve(_input: &str) -> anyhow::Result<DayResult> {
             }
             None => {
                 let direction = Direction::Down;
-                if let Some(moved) = coord.move_in(direction, width, height) {
+                if let Some(moved @ (x, y)) = coord.move_in(direction, width, height) {
                     states.push(Reverse(State::new(
                         moved,
-                        score + (input[moved.0 + moved.1 * (width + 1)] - b'0') as usize,
+                        score + (input[x + y * (width + 1)] - b'0') as usize,
                         Some((direction, 1)),
                         width,
                         height,
@@ -80,10 +86,10 @@ pub fn solve(_input: &str) -> anyhow::Result<DayResult> {
                 }
 
                 let direction = Direction::Right;
-                if let Some(moved) = coord.move_in(direction, width, height) {
+                if let Some(moved @ (x, y)) = coord.move_in(direction, width, height) {
                     states.push(Reverse(State::new(
                         moved,
-                        score + (input[moved.0 + moved.1 * (width + 1)] - b'0') as usize,
+                        score + (input[x + y * (width + 1)] - b'0') as usize,
                         Some((direction, 1)),
                         width,
                         height,
@@ -94,30 +100,37 @@ pub fn solve(_input: &str) -> anyhow::Result<DayResult> {
     }
 
     states.clear();
-    visited.clear();
+    visited.iter_mut().for_each(|v| *v = 0);
     let mut p2 = 0;
     states.push(Reverse(State::new((0, 0), 0, None, width, height)));
     while let Some(Reverse(State {
-        coord,
+        coord: coord @ (x, y),
         score,
         direction,
         ..
     })) = states.pop()
     {
-        if !visited.insert((coord, direction)) {
-            continue;
+        if let Some((direction, dist)) = direction {
+            let v: u64 = direction.offset() << dist;
+            if (visited[x + y * width] & v) != 0 {
+                continue;
+            }
+
+            visited[x + y * width] |= v;
         }
+
         if coord == end {
             p2 = score;
             break;
         }
+
         match direction {
             Some((direction, dist)) => {
                 if dist < 10 {
-                    if let Some(moved) = coord.move_in(direction, width, height) {
+                    if let Some(moved @ (x, y)) = coord.move_in(direction, width, height) {
                         states.push(Reverse(State::new(
                             moved,
-                            score + (input[moved.0 + moved.1 * (width + 1)] - b'0') as usize,
+                            score + (input[x + y * (width + 1)] - b'0') as usize,
                             Some((direction, dist + 1)),
                             width,
                             height,
@@ -128,14 +141,14 @@ pub fn solve(_input: &str) -> anyhow::Result<DayResult> {
                 let left = direction.left();
                 if let Some((moved, extra_score)) =
                     (0..4).try_fold((coord, 0), |(coord, extra_score), _| {
-                        coord.move_in(left, width, height).map(|new_coord| {
-                            (
-                                new_coord,
-                                extra_score
-                                    + (input[new_coord.0 + new_coord.1 * (width + 1)] - b'0')
-                                        as usize,
-                            )
-                        })
+                        coord
+                            .move_in(left, width, height)
+                            .map(|new_coord @ (x, y)| {
+                                (
+                                    new_coord,
+                                    extra_score + (input[x + y * (width + 1)] - b'0') as usize,
+                                )
+                            })
                     })
                 {
                     states.push(Reverse(State::new(
@@ -150,14 +163,14 @@ pub fn solve(_input: &str) -> anyhow::Result<DayResult> {
                 let right = direction.right();
                 if let Some((moved, extra_score)) =
                     (0..4).try_fold((coord, 0), |(coord, extra_score), _| {
-                        coord.move_in(right, width, height).map(|new_coord| {
-                            (
-                                new_coord,
-                                extra_score
-                                    + (input[new_coord.0 + new_coord.1 * (width + 1)] - b'0')
-                                        as usize,
-                            )
-                        })
+                        coord
+                            .move_in(right, width, height)
+                            .map(|new_coord @ (x, y)| {
+                                (
+                                    new_coord,
+                                    extra_score + (input[x + y * (width + 1)] - b'0') as usize,
+                                )
+                            })
                     })
                 {
                     states.push(Reverse(State::new(
@@ -173,14 +186,14 @@ pub fn solve(_input: &str) -> anyhow::Result<DayResult> {
                 let direction = Direction::Down;
                 if let Some((moved, extra_score)) =
                     (0..4).try_fold((coord, 0), |(coord, extra_score), _| {
-                        coord.move_in(direction, width, height).map(|new_coord| {
-                            (
-                                new_coord,
-                                extra_score
-                                    + (input[new_coord.0 + new_coord.1 * (width + 1)] - b'0')
-                                        as usize,
-                            )
-                        })
+                        coord
+                            .move_in(direction, width, height)
+                            .map(|new_coord @ (x, y)| {
+                                (
+                                    new_coord,
+                                    extra_score + (input[x + y * (width + 1)] - b'0') as usize,
+                                )
+                            })
                     })
                 {
                     states.push(Reverse(State::new(
@@ -195,14 +208,14 @@ pub fn solve(_input: &str) -> anyhow::Result<DayResult> {
                 let direction = Direction::Right;
                 if let Some((moved, extra_score)) =
                     (0..4).try_fold((coord, 0), |(coord, extra_score), _| {
-                        coord.move_in(direction, width, height).map(|new_coord| {
-                            (
-                                new_coord,
-                                extra_score
-                                    + (input[new_coord.0 + new_coord.1 * (width + 1)] - b'0')
-                                        as usize,
-                            )
-                        })
+                        coord
+                            .move_in(direction, width, height)
+                            .map(|new_coord @ (x, y)| {
+                                (
+                                    new_coord,
+                                    extra_score + (input[x + y * (width + 1)] - b'0') as usize,
+                                )
+                            })
                     })
                 {
                     states.push(Reverse(State::new(
@@ -230,7 +243,7 @@ struct State {
 
 impl State {
     fn new(
-        coord: (usize, usize),
+        coord @ (x, y): (usize, usize),
         score: usize,
         direction: Option<(Direction, usize)>,
         width: usize,
@@ -240,7 +253,7 @@ impl State {
             coord,
             score,
             direction,
-            est_dist: coord.0.abs_diff(width - 1) + coord.1.abs_diff(height - 1),
+            est_dist: x.abs_diff(width - 1) + y.abs_diff(height - 1),
         }
     }
 }
@@ -267,7 +280,28 @@ enum Direction {
     Right,
 }
 
+impl From<Direction> for u64 {
+    fn from(value: Direction) -> Self {
+        use Direction::*;
+        match value {
+            Up => 1 << 0,
+            Down => 1 << 1,
+            Left => 1 << 2,
+            Right => 1 << 3,
+        }
+    }
+}
+
 impl Direction {
+    fn offset(self) -> u64 {
+        match self {
+            Direction::Up => 1 << 0,
+            Direction::Down => 1 << 10,
+            Direction::Left => 1 << 20,
+            Direction::Right => 1 << 30,
+        }
+    }
+
     fn left(self) -> Self {
         use Direction::*;
         match self {
