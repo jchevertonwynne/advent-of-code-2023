@@ -13,231 +13,215 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
     let height = input.len() / (width + 1);
     let end = (width - 1, height - 1);
 
-    let mut visited = vec![0_u64; width * height];
-    let mut p1 = 0;
+    let mut visited = vec![Lens::new(); width * height];
     let mut states = BinaryHeap::from_iter([Reverse(State::new((0, 0), 0, None, width, height))]);
-    while let Some(Reverse(State {
-        coord: coord @ (x, y),
-        score,
-        direction,
-        ..
-    })) = states.pop()
-    {
-        if let Some((direction, dist)) = direction {
-            let v: u64 = direction.offset() << dist;
-            if (visited[x + y * width] & v) != 0 {
-                continue;
-            }
 
-            visited[x + y * width] |= v;
-        }
+    let p1 = solver::<1, 3>(&mut states, &mut visited, width, end, height, input);
 
-        if coord == end {
-            p1 = score;
-            break;
-        }
-
-        match direction {
-            Some((direction, dist)) => {
-                if dist < 3 {
-                    if let Some(moved @ (x, y)) = coord.move_in(direction, width, height) {
-                        states.push(Reverse(State::new(
-                            moved,
-                            score + (input[x + y * (width + 1)] - b'0') as usize,
-                            Some((direction, dist + 1)),
-                            width,
-                            height,
-                        )));
-                    }
-                }
-
-                let left = direction.left();
-                if let Some(moved @ (x, y)) = coord.move_in(left, width, height) {
-                    states.push(Reverse(State::new(
-                        moved,
-                        score + (input[x + y * (width + 1)] - b'0') as usize,
-                        Some((left, 1)),
-                        width,
-                        height,
-                    )));
-                }
-
-                let right = direction.right();
-                if let Some(moved @ (x, y)) = coord.move_in(right, width, height) {
-                    states.push(Reverse(State::new(
-                        moved,
-                        score + (input[x + y * (width + 1)] - b'0') as usize,
-                        Some((right, 1)),
-                        width,
-                        height,
-                    )));
-                }
-            }
-            None => {
-                let direction = Direction::Down;
-                if let Some(moved @ (x, y)) = coord.move_in(direction, width, height) {
-                    states.push(Reverse(State::new(
-                        moved,
-                        score + (input[x + y * (width + 1)] - b'0') as usize,
-                        Some((direction, 1)),
-                        width,
-                        height,
-                    )));
-                }
-
-                let direction = Direction::Right;
-                if let Some(moved @ (x, y)) = coord.move_in(direction, width, height) {
-                    states.push(Reverse(State::new(
-                        moved,
-                        score + (input[x + y * (width + 1)] - b'0') as usize,
-                        Some((direction, 1)),
-                        width,
-                        height,
-                    )));
-                }
-            }
-        }
-    }
-
+    visited.iter_mut().for_each(|v| *v = Lens::new());
     states.clear();
-    visited.iter_mut().for_each(|v| *v = 0);
-    let mut p2 = 0;
     states.push(Reverse(State::new((0, 0), 0, None, width, height)));
-    while let Some(Reverse(State {
-        coord: coord @ (x, y),
-        score,
-        direction,
-        ..
-    })) = states.pop()
-    {
-        if let Some((direction, dist)) = direction {
-            let v: u64 = direction.offset() << dist;
-            if (visited[x + y * width] & v) != 0 {
-                continue;
-            }
 
-            visited[x + y * width] |= v;
-        }
-
-        if coord == end {
-            p2 = score;
-            break;
-        }
-
-        match direction {
-            Some((direction, dist)) => {
-                if dist < 10 {
-                    if let Some(moved @ (x, y)) = coord.move_in(direction, width, height) {
-                        states.push(Reverse(State::new(
-                            moved,
-                            score + (input[x + y * (width + 1)] - b'0') as usize,
-                            Some((direction, dist + 1)),
-                            width,
-                            height,
-                        )));
-                    }
-                }
-
-                let left = direction.left();
-                if let Some((moved, extra_score)) =
-                    (0..4).try_fold((coord, 0), |(coord, extra_score), _| {
-                        coord
-                            .move_in(left, width, height)
-                            .map(|new_coord @ (x, y)| {
-                                (
-                                    new_coord,
-                                    extra_score + (input[x + y * (width + 1)] - b'0') as usize,
-                                )
-                            })
-                    })
-                {
-                    states.push(Reverse(State::new(
-                        moved,
-                        score + extra_score,
-                        Some((left, 4)),
-                        width,
-                        height,
-                    )));
-                }
-
-                let right = direction.right();
-                if let Some((moved, extra_score)) =
-                    (0..4).try_fold((coord, 0), |(coord, extra_score), _| {
-                        coord
-                            .move_in(right, width, height)
-                            .map(|new_coord @ (x, y)| {
-                                (
-                                    new_coord,
-                                    extra_score + (input[x + y * (width + 1)] - b'0') as usize,
-                                )
-                            })
-                    })
-                {
-                    states.push(Reverse(State::new(
-                        moved,
-                        score + extra_score,
-                        Some((right, 4)),
-                        width,
-                        height,
-                    )));
-                }
-            }
-            None => {
-                let direction = Direction::Down;
-                if let Some((moved, extra_score)) =
-                    (0..4).try_fold((coord, 0), |(coord, extra_score), _| {
-                        coord
-                            .move_in(direction, width, height)
-                            .map(|new_coord @ (x, y)| {
-                                (
-                                    new_coord,
-                                    extra_score + (input[x + y * (width + 1)] - b'0') as usize,
-                                )
-                            })
-                    })
-                {
-                    states.push(Reverse(State::new(
-                        moved,
-                        score + extra_score,
-                        Some((direction, 4)),
-                        width,
-                        height,
-                    )));
-                }
-
-                let direction = Direction::Right;
-                if let Some((moved, extra_score)) =
-                    (0..4).try_fold((coord, 0), |(coord, extra_score), _| {
-                        coord
-                            .move_in(direction, width, height)
-                            .map(|new_coord @ (x, y)| {
-                                (
-                                    new_coord,
-                                    extra_score + (input[x + y * (width + 1)] - b'0') as usize,
-                                )
-                            })
-                    })
-                {
-                    states.push(Reverse(State::new(
-                        moved,
-                        score + extra_score,
-                        Some((direction, 4)),
-                        width,
-                        height,
-                    )));
-                }
-            }
-        }
-    }
+    let p2 = solver::<4, 10>(&mut states, &mut visited, width, end, height, input);
 
     (p1, p2).into_result()
+}
+
+fn solver<const MOVE_MIN: u16, const MOVE_MAX: u16>(
+    states: &mut BinaryHeap<Reverse<State>>,
+    visited: &mut [Lens],
+    width: usize,
+    end: (usize, usize),
+    height: usize,
+    input: &[u8],
+) -> usize {
+    while let Some(Reverse(State {
+        coord: coord @ (x, y),
+        score,
+        direction,
+        ..
+    })) = states.pop()
+    {
+        if let Some((direction, dist)) = direction {
+            let l = &mut visited[x + y * width];
+            match direction {
+                Direction::Up => {
+                    if l.up < dist {
+                        continue;
+                    }
+                    l.up = std::cmp::min(l.up, dist);
+                }
+                Direction::Down => {
+                    if l.down < dist {
+                        continue;
+                    }
+                    l.down = std::cmp::min(l.down, dist);
+                }
+                Direction::Left => {
+                    if l.left < dist {
+                        continue;
+                    }
+                    l.left = std::cmp::min(l.left, dist);
+                }
+                Direction::Right => {
+                    if l.right < dist {
+                        continue;
+                    }
+                    l.right = std::cmp::min(l.right, dist);
+                }
+            }
+        };
+
+        if coord == end {
+            return score;
+        }
+
+        match direction {
+            Some((direction, dist)) => {
+                if dist < MOVE_MAX {
+                    if let Some(moved @ (x, y)) = coord.move_in(direction, width, height) {
+                        if moved == end {
+                            return score + (input[x + y * (width + 1)] - b'0') as usize;
+                        }
+                        if is_good(visited, direction, moved, width, dist + 1) {
+                            states.push(Reverse(State::new(
+                                moved,
+                                score + (input[x + y * (width + 1)] - b'0') as usize,
+                                Some((direction, dist + 1)),
+                                width,
+                                height,
+                            )));
+                        }
+                    }
+                }
+
+                let left = direction.left();
+                if let Some(value) = move_and_solve::<MOVE_MIN, MOVE_MAX>(
+                    coord, left, width, height, input, end, score, visited, states,
+                ) {
+                    return value;
+                }
+
+                let right = direction.right();
+                if let Some(value) = move_and_solve::<MOVE_MIN, MOVE_MAX>(
+                    coord, right, width, height, input, end, score, visited, states,
+                ) {
+                    return value;
+                }
+            }
+            None => {
+                let down = Direction::Down;
+                if let Some(value) = move_and_solve::<MOVE_MIN, MOVE_MAX>(
+                    coord, down, width, height, input, end, score, visited, states,
+                ) {
+                    return value;
+                }
+
+                let right = Direction::Right;
+                if let Some(value) = move_and_solve::<MOVE_MIN, MOVE_MAX>(
+                    coord, right, width, height, input, end, score, visited, states,
+                ) {
+                    return value;
+                }
+            }
+        }
+
+        if let Some((direction, dist)) = direction {
+            let l = &mut visited[x + y * width];
+            match direction {
+                Direction::Up => l.up = dist - 1,
+                Direction::Down => l.down = dist - 1,
+                Direction::Left => l.left = dist - 1,
+                Direction::Right => l.right = dist - 1,
+            }
+        }
+    }
+
+    unreachable!("lmaoooooo")
+}
+
+#[allow(clippy::too_many_arguments)]
+#[inline(always)]
+fn move_and_solve<const MOVE_MIN: u16, const MOVE_MAX: u16>(
+    coord: (usize, usize),
+    left: Direction,
+    width: usize,
+    height: usize,
+    input: &[u8],
+    end: (usize, usize),
+    score: usize,
+    visited: &mut [Lens],
+    states: &mut BinaryHeap<Reverse<State>>,
+) -> Option<usize> {
+    if let Some((moved, extra_score)) =
+        (0..MOVE_MIN).try_fold((coord, 0), |(coord, extra_score), _| {
+            coord
+                .move_in(left, width, height)
+                .map(|new_coord @ (x, y)| {
+                    (
+                        new_coord,
+                        extra_score + (input[x + y * (width + 1)] - b'0') as usize,
+                    )
+                })
+        })
+    {
+        if moved == end {
+            return Some(score + extra_score);
+        }
+        if is_good(visited, left, moved, width, MOVE_MIN) {
+            states.push(Reverse(State::new(
+                moved,
+                score + extra_score,
+                Some((left, MOVE_MIN)),
+                width,
+                height,
+            )));
+        }
+    }
+    None
+}
+
+#[inline(always)]
+fn is_good(
+    lenses: &[Lens],
+    direction: Direction,
+    (x, y): (usize, usize),
+    width: usize,
+    to_beat: u16,
+) -> bool {
+    let l = &lenses[x + y * width];
+    match direction {
+        Direction::Up => l.up >= to_beat,
+        Direction::Down => l.down >= to_beat,
+        Direction::Left => l.left >= to_beat,
+        Direction::Right => l.right >= to_beat,
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Lens {
+    up: u16,
+    down: u16,
+    left: u16,
+    right: u16,
+}
+
+impl Lens {
+    const fn new() -> Lens {
+        Lens {
+            up: u16::MAX,
+            down: u16::MAX,
+            left: u16::MAX,
+            right: u16::MAX,
+        }
+    }
 }
 
 #[derive(Eq, PartialEq)]
 struct State {
     coord: (usize, usize),
     score: usize,
-    direction: Option<(Direction, usize)>,
+    direction: Option<(Direction, u16)>,
     est_dist: usize,
 }
 
@@ -245,7 +229,7 @@ impl State {
     fn new(
         coord @ (x, y): (usize, usize),
         score: usize,
-        direction: Option<(Direction, usize)>,
+        direction: Option<(Direction, u16)>,
         width: usize,
         height: usize,
     ) -> State {
@@ -293,15 +277,6 @@ impl From<Direction> for u64 {
 }
 
 impl Direction {
-    fn offset(self) -> u64 {
-        match self {
-            Direction::Up => 1 << 0,
-            Direction::Down => 1 << 10,
-            Direction::Left => 1 << 20,
-            Direction::Right => 1 << 30,
-        }
-    }
-
     fn left(self) -> Self {
         use Direction::*;
         match self {
