@@ -54,6 +54,10 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
         lr += 1;
     }
 
+    // once the outline is calculated
+    // loop through every y & track when it goes from space to trench
+    // every alternate is internal
+
     let mut internal: FxHashSet<(isize, isize)> = FxHashSet::default();
     let (sx, sy) = if lr > 0 {
         match first_dir {
