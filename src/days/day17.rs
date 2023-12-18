@@ -16,13 +16,13 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
     let mut visited = vec![Lens::new(); width * height];
     let mut states = BinaryHeap::from_iter([Reverse(State::new((0, 0), 0, None, width, height))]);
 
-    let p1 = solver::<1, 3>(&mut states, &mut visited, width, end, height, input);
+    let p1 = solver::<1, 3>(&mut states, &mut visited, width, height, end, input);
 
     visited.iter_mut().for_each(|v| *v = Lens::new());
     states.clear();
     states.push(Reverse(State::new((0, 0), 0, None, width, height)));
 
-    let p2 = solver::<4, 10>(&mut states, &mut visited, width, end, height, input);
+    let p2 = solver::<4, 10>(&mut states, &mut visited, width, height, end, input);
 
     (p1, p2).into_result()
 }
@@ -31,8 +31,8 @@ fn solver<const MOVE_MIN: u16, const MOVE_MAX: u16>(
     states: &mut BinaryHeap<Reverse<State>>,
     visited: &mut [Lens],
     width: usize,
-    end: (usize, usize),
     height: usize,
+    end: (usize, usize),
     input: &[u8],
 ) -> usize {
     while let Some(Reverse(State {
@@ -262,18 +262,6 @@ enum Direction {
     Down,
     Left,
     Right,
-}
-
-impl From<Direction> for u64 {
-    fn from(value: Direction) -> Self {
-        use Direction::*;
-        match value {
-            Up => 1 << 0,
-            Down => 1 << 1,
-            Left => 1 << 2,
-            Right => 1 << 3,
-        }
-    }
 }
 
 impl Direction {
