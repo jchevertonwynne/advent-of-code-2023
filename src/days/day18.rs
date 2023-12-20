@@ -1,100 +1,75 @@
-use anyhow::Context;
-use fxhash::FxHashSet;
-use nom::{branch::alt, bytes::complete::tag, combinator::map, IResult};
+use itertools::Itertools;
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    combinator::{map, map_opt},
+    IResult,
+};
 
 use crate::{DayResult, IntoDayResult};
 
 pub fn solve(input: &str) -> anyhow::Result<DayResult> {
-    let mut x: isize = 0;
-    let mut y: isize = 0;
-    let mut trench = FxHashSet::default();
-    trench.insert((0_isize, 0_isize));
-    let mut first_dir = None;
-    let mut last_dir: Option<Direction> = None;
+    let mut x1: isize = 0;
+    let mut y1: isize = 0;
+    let mut x2: isize = 0;
+    let mut y2: isize = 0;
 
-    let mut lr = 0_isize;
+    let mut points1 = vec![(x1, y1)];
+    let mut points2 = vec![(x1, y1)];
+    let mut boundary_points1 = 0;
+    let mut boundary_points2 = 0;
 
     for line in input.lines() {
-        let (_, (direction, distance, _)) =
-            parse_line(line).map_err(|err| anyhow::anyhow!("{err}"))?;
+        let (_, ((direction1, distance1), (direction2, distance2))) =
+            parse_line(line.as_bytes()).map_err(|err| anyhow::anyhow!("{err}"))?;
 
-        first_dir = first_dir.or(Some(direction));
-        if let Some(last_dir) = last_dir {
-            debug_assert!(last_dir != direction);
-            debug_assert!(last_dir != direction.right().right());
+        let distance1 = distance1 as isize;
+        let distance2 = distance2 as isize;
 
-            if last_dir.left() == direction {
-                lr -= 1;
-            } else {
-                lr += 1;
-            }
-        }
-
-        let (dx, dy): (isize, isize) = match direction {
-            Direction::Up => (0, 1),
-            Direction::Down => (0, -1),
-            Direction::Left => (-1, 0),
-            Direction::Right => (1, 0),
+        (x1, y1) = match direction1 {
+            Direction::Up => (x1, y1 + distance1),
+            Direction::Down => (x1, y1 - distance1),
+            Direction::Left => (x1 - distance1, y1),
+            Direction::Right => (x1 + distance1, y1),
         };
 
-        for _ in 0..distance {
-            x += dx;
-            y += dy;
-            trench.insert((x, y));
-        }
+        (x2, y2) = match direction2 {
+            Direction::Up => (x2, y2 + distance2),
+            Direction::Down => (x2, y2 - distance2),
+            Direction::Left => (x2 - distance2, y2),
+            Direction::Right => (x2 + distance2, y2),
+        };
 
-        last_dir = Some(direction);
+        boundary_points1 += distance1;
+        boundary_points2 += distance2;
+
+        points1.push((x1, y1));
+        points2.push((x2, y2));
     }
 
-    let first_dir = first_dir.context("expected an intiail direction")?;
-    let last_dir = last_dir.context("expected a final direction")?;
-    if last_dir.left() == first_dir {
-        lr -= 1;
-    } else {
-        lr += 1;
-    }
+    let area1 = area(&points1);
+    let area2 = area(&points2);
 
-    // once the outline is calculated
-    // loop through every y & track when it goes from space to trench
-    // every alternate is internal
+    let interior1 = area1 + 1 - (boundary_points1 / 2);
+    let interior2 = area2 + 1 - (boundary_points2 / 2);
 
-    let mut internal: FxHashSet<(isize, isize)> = FxHashSet::default();
-    let (sx, sy) = if lr > 0 {
-        match first_dir {
-            Direction::Up => (1, 1),
-            Direction::Down => (-1, -1),
-            Direction::Left => (-1, 1),
-            Direction::Right => (1, -1),
-        }
-    } else {
-        match first_dir {
-            Direction::Up => (-1, 1),
-            Direction::Down => (1, -1),
-            Direction::Left => (-1, -1),
-            Direction::Right => (1, 1),
-        }
-    };
-    flood_fill(sx, sy, &trench, &mut internal);
+    let p1 = interior1 + boundary_points1;
+    let p2 = interior2 + boundary_points2;
 
-    let p1 = internal.len() + trench.len();
-
-    (p1).into_result()
+    (p1, p2).into_result()
 }
 
-fn flood_fill(
-    x: isize,
-    y: isize,
-    trench: &FxHashSet<(isize, isize)>,
-    inner: &mut FxHashSet<(isize, isize)>,
-) {
-    for (nx, ny) in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
-        if !trench.contains(&(nx, ny)) && inner.insert((nx, ny)) {
-            flood_fill(nx, ny, trench, inner);
-        }
-    }
+fn area(points: &[(isize, isize)]) -> isize {
+    points
+        .iter()
+        .tuple_windows()
+        .map(|(&(x1, y1), &(x2, y2))| (y1 + y2) * (x1 - x2))
+        .sum::<isize>()
+        .abs()
+        / 2
 }
 
-fn parse_direction(line: &str) -> IResult<&str, Direction> {
+fn parse_direction(line: &[u8]) -> IResult<&[u8], Direction> {
     alt((
         map(tag("U"), |_| Direction::Up),
         map(tag("D"), |_| Direction::Down),
@@ -103,26 +78,36 @@ fn parse_direction(line: &str) -> IResult<&str, Direction> {
     ))(line)
 }
 
-fn parse_hex(line: &str) -> IResult<&str, [u8; 3]> {
-    map(
-        nom::combinator::map_res(nom::character::complete::hex_digit1, |h| {
-            u32::from_str_radix(h, 16)
-        }),
-        |digit| [(digit >> 16) as u8, (digit >> 8) as u8, digit as u8],
-    )(line)
+fn parse_direction2(d: u32) -> Option<Direction> {
+    Some(match d {
+        0 => Direction::Right,
+        1 => Direction::Down,
+        2 => Direction::Left,
+        3 => Direction::Up,
+        _ => return None,
+    })
 }
 
-fn parse_line(line: &str) -> IResult<&str, (Direction, u32, [u8; 3])> {
+fn parse_distance_direction(line: &[u8]) -> IResult<&[u8], (Direction, u32)> {
+    map_opt(nom::number::complete::hex_u32, |n| {
+        let direction = n & 0b1111;
+        parse_direction2(direction).map(|d| (d, n >> 4))
+    })(line)
+}
+
+type DDTuple = (Direction, u32);
+
+fn parse_line(line: &[u8]) -> IResult<&[u8], (DDTuple, DDTuple)> {
     map(
         nom::sequence::tuple((
             parse_direction,
             tag(" "),
             nom::character::complete::u32,
             tag(" (#"),
-            parse_hex,
+            parse_distance_direction,
             tag(")"),
         )),
-        |(direction, _, distance, _, hex, _)| (direction, distance, hex),
+        |(direction, _, distance, _, hex, _)| ((direction, distance), hex),
     )(line)
 }
 
@@ -134,28 +119,6 @@ enum Direction {
     Right,
 }
 
-impl Direction {
-    fn left(self) -> Self {
-        use Direction::*;
-        match self {
-            Up => Left,
-            Down => Right,
-            Left => Down,
-            Right => Up,
-        }
-    }
-
-    fn right(self) -> Self {
-        use Direction::*;
-        match self {
-            Up => Right,
-            Down => Left,
-            Left => Up,
-            Right => Down,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{days::day18::solve, IntoDayResult};
@@ -164,13 +127,16 @@ mod tests {
     fn works_for_example() {
         const INPUT: &str = include_str!("../../input/day18_test.txt");
         let solution = solve(INPUT).unwrap();
-        assert_eq!(().into_day_result(), solution);
+        assert_eq!((62, 952_408_144_115_isize).into_day_result(), solution);
     }
 
     #[test]
     fn works_for_input() {
         const INPUT: &str = include_str!("../../input/day18.txt");
         let solution = solve(INPUT).unwrap();
-        assert_eq!(().into_day_result(), solution);
+        assert_eq!(
+            (33_491, 87_716_969_654_406_isize).into_day_result(),
+            solution
+        );
     }
 }
