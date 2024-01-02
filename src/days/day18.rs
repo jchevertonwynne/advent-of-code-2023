@@ -1,3 +1,4 @@
+use bstr::ByteSlice;
 use itertools::Itertools;
 use nom::{
     branch::alt,
@@ -9,6 +10,8 @@ use nom::{
 use crate::{DayResult, IntoDayResult};
 
 pub fn solve(input: &str) -> anyhow::Result<DayResult> {
+    let input = input.as_bytes();
+
     let mut x1: isize = 0;
     let mut y1: isize = 0;
     let mut x2: isize = 0;
@@ -21,7 +24,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
 
     for line in input.lines() {
         let (_, ((direction1, distance1), (direction2, distance2))) =
-            parse_line(line.as_bytes()).map_err(|err| anyhow::anyhow!("{err}"))?;
+            parse_line(line).map_err(|err| anyhow::anyhow!("{err}"))?;
 
         let distance1 = distance1 as isize;
         let distance2 = distance2 as isize;

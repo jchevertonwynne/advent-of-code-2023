@@ -1,11 +1,14 @@
 use std::collections::VecDeque;
 
+use bstr::ByteSlice;
 use fxhash::FxHashMap;
 use nom::{bytes::complete::tag, InputTakeAtPosition};
 
 use crate::{DayResult, IntoDayResult};
 
 pub fn solve(input: &str) -> anyhow::Result<DayResult> {
+    let input = input.as_bytes();
+
     let mut p1 = 0;
     let mut p2 = 0;
 
@@ -17,7 +20,7 @@ pub fn solve(input: &str) -> anyhow::Result<DayResult> {
 
     for line in input.lines() {
         let (nums, line) = line
-            .split_at_position::<_, nom::error::Error<&str>>(|v| v == ' ')
+            .split_at_position::<_, nom::error::Error<&[u8]>>(|v| v == b' ')
             .map_err(|err| anyhow::anyhow!("{err}"))?;
         let (_, mut nums) = nom::multi::separated_list1::<_, _, _, nom::error::Error<&[u8]>, _, _>(
             tag(","),
